@@ -144,7 +144,7 @@ impl ClockApp {
             .frame(egui::Frame::new().fill(bg).inner_margin(8.0))
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
-                    let sz = egui::vec2(18.0, 18.0);
+                    let sz = egui::vec2(21.0, 21.0);
                     if icon_button(
                         ui,
                         egui::include_image!("../assets/icons/speaker-high.svg"),
@@ -230,10 +230,12 @@ impl ClockApp {
 
                     // ---- time: speaker + kanji, then karaoke kana + romaji ----
                     ui.horizontal(|ui| {
-                        center_pad(ui, 54.0 * s * 0.6 + measure(ui.ctx(), &t.kanji, 54.0 * s));
-                        if speaker_icon(ui, theme.accent, 20.0 * s).clicked() {
+                        let (isz, gap) = (30.0 * s, 10.0 * s);
+                        center_pad(ui, isz + gap + measure(ui.ctx(), &t.kanji, 54.0 * s));
+                        if speaker_icon(ui, theme.accent, isz).clicked() {
                             self.speak_line(Line::Time, &t.kanji);
                         }
+                        ui.add_space(gap);
                         label(ui, &t.kanji, 54.0 * s, theme.accent);
                     });
                     self.reading_line(ui, Line::Time, &t.kana, 26.0 * s, theme);
@@ -245,10 +247,12 @@ impl ClockApp {
 
                     // ---- date: speaker + kanji, then karaoke kana + romaji ----
                     ui.horizontal(|ui| {
-                        center_pad(ui, 32.0 * s * 0.6 + measure(ui.ctx(), &dt.kanji, 32.0 * s));
-                        if speaker_icon(ui, theme.ink, 16.0 * s).clicked() {
+                        let (isz, gap) = (24.0 * s, 8.0 * s);
+                        center_pad(ui, isz + gap + measure(ui.ctx(), &dt.kanji, 32.0 * s));
+                        if speaker_icon(ui, theme.accent, isz).clicked() {
                             self.speak_line(Line::Date, &dt.kanji);
                         }
+                        ui.add_space(gap);
                         label(ui, &dt.kanji, 32.0 * s, theme.ink);
                     });
                     if self.show_romaji {
