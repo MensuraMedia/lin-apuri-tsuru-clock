@@ -23,7 +23,7 @@ pub struct Utterance {
 }
 
 #[cfg(feature = "audio")]
-pub use engine::Speaker;
+pub use engine::{Speaker, warm_up};
 
 #[cfg(feature = "audio")]
 mod engine {
@@ -99,6 +99,17 @@ mod engine {
 
             Some(Utterance { moras, total: t })
         }
+    }
+
+    /// Preload speaker 30's model in the background so the first click is snappy
+    /// (VOICEVOX lazy-loads a voice on first use, which can take seconds).
+    pub fn warm_up() {
+        std::thread::spawn(|| {
+            let _ = ureq::post(&format!("{BASE}/initialize_speaker"))
+                .query("speaker", &SPEAKER.to_string())
+                .timeout(Duration::from_secs(30))
+                .call();
+        });
     }
 
     /// Spawn the OS audio player on `path` (detached; we don't wait).

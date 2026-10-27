@@ -67,8 +67,6 @@ struct ClockApp {
     page: Page,
     background: Background,
     #[cfg(feature = "audio")]
-    speaker: Option<audio::Speaker>,
-    #[cfg(feature = "audio")]
     rx: Option<std::sync::mpsc::Receiver<(Line, audio::Utterance)>>,
     #[cfg(feature = "audio")]
     playing: Option<Playing>,
@@ -78,6 +76,8 @@ impl ClockApp {
     fn new(cc: &eframe::CreationContext<'_>) -> Self {
         install_japanese_font(&cc.egui_ctx);
         egui_extras::install_image_loaders(&cc.egui_ctx);
+        #[cfg(feature = "audio")]
+        audio::warm_up();
         Self {
             show_romaji: true,
             fmt24: true,
@@ -86,8 +86,6 @@ impl ClockApp {
             text_scale: 0.85, // Compact by default
             page: Page::Clock,
             background: Background::default(),
-            #[cfg(feature = "audio")]
-            speaker: audio::Speaker::detect(),
             #[cfg(feature = "audio")]
             rx: None,
             #[cfg(feature = "audio")]
@@ -119,9 +117,6 @@ impl ClockApp {
     fn speak_line(&mut self, which: Line, text: &str) {
         #[cfg(feature = "audio")]
         {
-            if self.speaker.is_none() {
-                return;
-            }
             let (tx, rx) = std::sync::mpsc::channel();
             self.rx = Some(rx);
             self.playing = None;
