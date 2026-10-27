@@ -1,3 +1,5 @@
+> **Status: ABANDONED (2026-10-27).** Builds and runs; development stopped. Reference only.
+
 # Handoff — lin-apuri-tsūru-clock
 
 A working handoff for the next engineer or agent. Pairs with `README.md` (what & why),

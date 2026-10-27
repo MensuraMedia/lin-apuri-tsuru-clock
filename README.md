@@ -1,3 +1,7 @@
+> **⚠️ ABANDONED (2026-10-27).** This project is no longer maintained. It builds and runs,
+> but development stopped by the author's decision. Kept for reference only. See `HANDOFF.md`
+> for the state at abandonment.
+
 # lin-apuri-tsūru-clock
 
 **リン・アプリ・ツール・クロック — "Lin App Tool Clock".** A native, cross-platform **Japanese learning clock**: a flat dark desk clock that shows the 24-hour time (as in Japan) with its **Japanese reading** — kanji, kana and romaji — and **speaks** the time aloud. Built in pure Rust with an immediate-mode GPU UI.

@@ -26,3 +26,4 @@
 | 2026-10-27T19:30:00 | Audio tagged for the OS mixer (paplay --client-name + PULSE_PROP application.name/icon/role) → shows as "lin-apuri-tsūru-clock", per-app volume/mute |
 | 2026-10-27T19:35:00 | Icons → #ccc outline weight (transparent fill, #ccc strokes) for toolbar + per-line speakers + back arrow |
 | 2026-10-27T19:40:00 | More vertical breathing room between the kanji/kana/romaji lines in the lower half; taller default window |
+| 2026-10-27T20:00:00 | Project ABANDONED by author decision. Builds/runs; no further development. |
