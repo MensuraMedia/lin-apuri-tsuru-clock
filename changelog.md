@@ -21,3 +21,5 @@
 | 2026-10-27T18:35:00 | Karaoke: yellow underline tracks the active mora on the time/date lines; a 🔊 speaker on each Japanese line (click to hear) |
 | 2026-10-27T18:40:00 | Toolbar is icon-only (no text labels); removed the VOICEVOX label from the bar; Compact text size is now the default |
 | 2026-10-27T18:45:00 | Settings moved from a floating window to an in-app page (← / S / Esc to leave) |
+| 2026-10-27T19:05:00 | Voice fix: VOICEVOX speaker 7 (ずんだもん — childlike) → 30 (No.7「アナウンス」), the intended adult announcer voice |
+| 2026-10-27T19:10:00 | 🔊 on every line (weekday→火曜日, part-of-day→朝/午後/夕方/夜, big time, English date, + kanji lines); date line now shows kana with the karaoke underline; taller default window |

@@ -20,6 +20,8 @@ enum Page {
 enum Line {
     Time,
     Date,
+    Weekday,
+    PartOfDay,
 }
 
 #[cfg(feature = "audio")]
@@ -38,8 +40,8 @@ pub fn run() -> eframe::Result<()> {
         crate::icons::rasterize(include_bytes!("../assets/icons/clock.svg"), 256, [255, 212, 0]);
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([820.0, 780.0])
-            .with_min_inner_size([460.0, 480.0])
+            .with_inner_size([820.0, 824.0])
+            .with_min_inner_size([460.0, 520.0])
             .with_app_id("lin-apuri-tsuru-clock")
             .with_title("lin-apuri-tsūru-clock")
             .with_icon(egui::IconData {
@@ -211,52 +213,34 @@ impl ClockApp {
                     let sc = Color32::from_rgba_unmultiplied(theme.bg.r(), theme.bg.g(), theme.bg.b(), a);
                     ui.painter().rect_filled(rect, 0.0, sc);
                 }
-                let s = (ui.available_height() / 720.0).clamp(0.5, 1.2) * self.text_scale;
+                let s = (ui.available_height() / 760.0).clamp(0.5, 1.2) * self.text_scale;
+                let wk_en = jptime::weekday_en(y, mo, d).to_uppercase();
+                let part_en = jptime::part_of_day(h).to_uppercase();
+                let date_en = format!("{d} {} {y}", month_en(mo));
+                let jp_wk = jp_weekday(y, mo, d);
+                let jp_part = jp_part_of_day(h);
                 ui.vertical_centered(|ui| {
                     ui.add_space(6.0 * s);
-                    label(
-                        ui,
-                        &jptime::weekday_en(y, mo, d).to_uppercase(),
-                        62.0 * s,
-                        theme.ink,
-                    );
-                    label(ui, &jptime::part_of_day(h).to_uppercase(), 32.0 * s, theme.dim);
+                    self.speakable(ui, &wk_en, 58.0 * s, theme.ink, Line::Weekday, &jp_wk);
+                    self.speakable(ui, &part_en, 30.0 * s, theme.dim, Line::PartOfDay, jp_part);
                     ui.add_space(4.0 * s);
-                    label(ui, &clock, 150.0 * s, theme.ink);
-                    label(ui, &format!("{d} {} {y}", month_en(mo)), 32.0 * s, theme.ink);
-                    ui.add_space(10.0 * s);
+                    self.speakable(ui, &clock, 128.0 * s, theme.ink, Line::Time, &t.kanji);
+                    self.speakable(ui, &date_en, 30.0 * s, theme.ink, Line::Date, &dt.kanji);
+                    ui.add_space(8.0 * s);
                     rule(ui, s, theme.accent);
-                    ui.add_space(10.0 * s);
+                    ui.add_space(8.0 * s);
 
-                    // ---- time: speaker + kanji, then karaoke kana + romaji ----
-                    ui.horizontal(|ui| {
-                        let (isz, gap) = (30.0 * s, 10.0 * s);
-                        center_pad(ui, isz + gap + measure(ui.ctx(), &t.kanji, 54.0 * s));
-                        if speaker_icon(ui, theme.accent, isz).clicked() {
-                            self.speak_line(Line::Time, &t.kanji);
-                        }
-                        ui.add_space(gap);
-                        label(ui, &t.kanji, 54.0 * s, theme.accent);
-                    });
-                    self.reading_line(ui, Line::Time, &t.kana, 26.0 * s, theme);
+                    self.speakable(ui, &t.kanji, 46.0 * s, theme.accent, Line::Time, &t.kanji);
+                    self.reading_line(ui, Line::Time, &t.kana, 24.0 * s, theme);
                     if self.show_romaji {
-                        label(ui, &t.romaji, 24.0 * s, theme.dim);
+                        label(ui, &t.romaji, 22.0 * s, theme.dim);
                     }
-
                     ui.add_space(6.0 * s);
 
-                    // ---- date: speaker + kanji, then karaoke kana + romaji ----
-                    ui.horizontal(|ui| {
-                        let (isz, gap) = (24.0 * s, 8.0 * s);
-                        center_pad(ui, isz + gap + measure(ui.ctx(), &dt.kanji, 32.0 * s));
-                        if speaker_icon(ui, theme.accent, isz).clicked() {
-                            self.speak_line(Line::Date, &dt.kanji);
-                        }
-                        ui.add_space(gap);
-                        label(ui, &dt.kanji, 32.0 * s, theme.ink);
-                    });
+                    self.speakable(ui, &dt.kanji, 30.0 * s, theme.ink, Line::Date, &dt.kanji);
+                    self.reading_line(ui, Line::Date, &dt.kana, 20.0 * s, theme);
                     if self.show_romaji {
-                        self.reading_line(ui, Line::Date, &dt.romaji, 20.0 * s, theme);
+                        label(ui, &dt.romaji, 18.0 * s, theme.dim);
                     }
                 });
             });
@@ -280,6 +264,21 @@ impl ClockApp {
         #[cfg(not(feature = "audio"))]
         let _ = which;
         label(ui, fallback, size, theme.dim);
+    }
+
+    /// A centred line with a tap-to-hear speaker to its left.
+    fn speakable(&mut self, ui: &mut egui::Ui, text: &str, size: f32, color: Color32, line: Line, say: &str) {
+        let accent = self.theme.accent;
+        ui.horizontal(|ui| {
+            let isz = (size * 0.30).clamp(15.0, 28.0);
+            let gap = isz * 0.4;
+            center_pad(ui, isz + gap + measure(ui.ctx(), text, size));
+            if speaker_icon(ui, accent, isz).clicked() {
+                self.speak_line(line, say);
+            }
+            ui.add_space(gap);
+            label(ui, text, size, color);
+        });
     }
 
     /// The settings page (fills the window — not a floating window).
@@ -535,6 +534,28 @@ fn cover_uv(tex: [usize; 2], rect: egui::Vec2) -> egui::Rect {
         uy = (1.0 - img_a / r_a) / 2.0;
     }
     egui::Rect::from_min_max(egui::pos2(ux, uy), egui::pos2(1.0 - ux, 1.0 - uy))
+}
+
+fn jp_weekday(y: i32, m: u8, d: u8) -> String {
+    [
+        "日曜日",
+        "月曜日",
+        "火曜日",
+        "水曜日",
+        "木曜日",
+        "金曜日",
+        "土曜日",
+    ][jptime::weekday_sun0(y, m, d)]
+    .to_string()
+}
+
+fn jp_part_of_day(h: u8) -> &'static str {
+    match jptime::part_of_day(h) {
+        "Morning" => "朝",
+        "Afternoon" => "午後",
+        "Evening" => "夕方",
+        _ => "夜",
+    }
 }
 
 fn month_en(m: u8) -> &'static str {

@@ -33,7 +33,7 @@ This repository is also intended as a **reference skeleton**: a modular, univers
 - **Japanese reading of the current time**, correct to the irregular forms a learner must know:
   `15:00 → 午後3時 → ごごさんじ → gogo san-ji`, `19:00 → 午後7時 → しちじ → shichi-ji`, `10:10 → じゅっぷん`.
 - **Japanese reading of the date** incl. the weekday: `2026年10月27日 火曜日 → nisennijuurokunen juugatsu nijuushichinichi kayoubi`, with the special day-of-month readings (ついたち…とおか, じゅうよっか, はつか).
-- **Speaks any line** in a natural Japanese voice: click the 🔊 next to the time or date (or press `Space`) and the local **VOICEVOX** engine says it — with a **yellow karaoke underline that tracks the exact mora** being pronounced, so you see which sound belongs to which part of the hour, minute, month and day. Synthesised live (no pre-rendered bank, no chime).
+- **Speaks any line** in a natural Japanese voice: click the 🔊 next to **any line** — weekday (→火曜日), part of day (→朝/午後/夕方/夜), the time, or the date (or press `Space`) and the local **VOICEVOX** engine says it — with a **yellow karaoke underline that tracks the exact mora** being pronounced, so you see which sound belongs to which part of the hour, minute, month and day. Synthesised live (no pre-rendered bank, no chime).
 - **Headless/CLI mode** — the same clock as text, for scripting or a terminal.
 - **Customisable**: a settings panel (⚙, or `S`) with theme presets + custom accent/text/background colours, brightness, four **text-size** presets, and a **background-image** mode (a folder shown fixed / as a slideshow / randomised, with adjustable blur and dimming). Default background is flat `#141414`.
 - **Native on any desktop** (Linux, macOS, Windows) and, by design, compilable to **WebAssembly** for the browser.

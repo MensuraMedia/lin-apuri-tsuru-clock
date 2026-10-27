@@ -33,7 +33,7 @@ mod engine {
     use std::time::Duration;
 
     const BASE: &str = "http://127.0.0.1:50021";
-    const SPEAKER: u32 = 7;
+    const SPEAKER: u32 = 30;
 
     /// A handle to the local VOICEVOX engine.
     pub struct Speaker;
