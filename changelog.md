@@ -23,3 +23,6 @@
 | 2026-10-27T18:45:00 | Settings moved from a floating window to an in-app page (← / S / Esc to leave) |
 | 2026-10-27T19:05:00 | Voice fix: VOICEVOX speaker 7 (ずんだもん — childlike) → 30 (No.7「アナウンス」), the intended adult announcer voice |
 | 2026-10-27T19:10:00 | 🔊 on every line (weekday→火曜日, part-of-day→朝/午後/夕方/夜, big time, English date, + kanji lines); date line now shows kana with the karaoke underline; taller default window |
+| 2026-10-27T19:30:00 | Audio tagged for the OS mixer (paplay --client-name + PULSE_PROP application.name/icon/role) → shows as "lin-apuri-tsūru-clock", per-app volume/mute |
+| 2026-10-27T19:35:00 | Icons → #ccc outline weight (transparent fill, #ccc strokes) for toolbar + per-line speakers + back arrow |
+| 2026-10-27T19:40:00 | More vertical breathing room between the kanji/kana/romaji lines in the lower half; taller default window |

@@ -112,10 +112,39 @@ mod engine {
         });
     }
 
-    /// Spawn the OS audio player on `path` (detached; we don't wait).
+    /// Spawn the OS audio player on `path` (detached; we don't wait), tagging the
+    /// stream with the app identity so PulseAudio/PipeWire show it in the system
+    /// mixer as "lin-apuri-tsūru-clock" — individually adjustable/mutable.
     fn play(path: &Path) {
-        for p in ["paplay", "pw-play", "aplay", "afplay"] {
-            if std::process::Command::new(p).arg(path).spawn().is_ok() {
+        use std::process::Command;
+        const APP: &str = "lin-apuri-tsūru-clock";
+        let prop =
+            format!("application.name={APP} application.icon_name=lin-apuri-tsuru-clock media.role=music");
+        let p = path.to_string_lossy().to_string();
+        // PulseAudio / PipeWire-pulse
+        if Command::new("paplay")
+            .env("PULSE_PROP", &prop)
+            .args([
+                format!("--client-name={APP}"),
+                "--stream-name=clock voice".into(),
+                p.clone(),
+            ])
+            .spawn()
+            .is_ok()
+        {
+            return;
+        }
+        // PipeWire native
+        if Command::new("pw-play")
+            .env("PULSE_PROP", &prop)
+            .args(["--media-role=Music", &p])
+            .spawn()
+            .is_ok()
+        {
+            return;
+        }
+        for c in ["aplay", "afplay"] {
+            if Command::new(c).arg(&p).spawn().is_ok() {
                 return;
             }
         }

@@ -9,6 +9,9 @@ use chrono::{Datelike, Local, Timelike};
 use eframe::egui;
 use egui::{Color32, FontFamily, RichText};
 
+/// Icon stroke colour (icons are outline weight: transparent fill, #ccc lines).
+const ICON: Color32 = Color32::from_rgb(204, 204, 204);
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Page {
     Clock,
@@ -40,8 +43,8 @@ pub fn run() -> eframe::Result<()> {
         crate::icons::rasterize(include_bytes!("../assets/icons/clock.svg"), 256, [255, 212, 0]);
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([820.0, 824.0])
-            .with_min_inner_size([460.0, 520.0])
+            .with_inner_size([820.0, 860.0])
+            .with_min_inner_size([460.0, 540.0])
             .with_app_id("lin-apuri-tsuru-clock")
             .with_title("lin-apuri-tsūru-clock")
             .with_icon(egui::IconData {
@@ -135,7 +138,6 @@ impl ClockApp {
 
     /// Bottom control bar — icon-only (tooltips carry the labels).
     fn controls(&mut self, ctx: &egui::Context, h: u8, mi: u8) {
-        let ink = self.theme.ink;
         let bg = self.theme.bg;
         egui::TopBottomPanel::bottom("controls")
             .frame(egui::Frame::new().fill(bg).inner_margin(8.0))
@@ -145,7 +147,7 @@ impl ClockApp {
                     if icon_button(
                         ui,
                         egui::include_image!("../assets/icons/speaker-high.svg"),
-                        ink,
+                        ICON,
                         sz,
                     )
                     .on_hover_text("Speak the time in Japanese (Space)")
@@ -153,16 +155,21 @@ impl ClockApp {
                     {
                         self.dispatch(Command::SpeakTime, ctx, h, mi);
                     }
-                    if icon_button(ui, egui::include_image!("../assets/icons/translate.svg"), ink, sz)
-                        .on_hover_text("Show/hide romaji & kana (R)")
-                        .clicked()
+                    if icon_button(
+                        ui,
+                        egui::include_image!("../assets/icons/translate.svg"),
+                        ICON,
+                        sz,
+                    )
+                    .on_hover_text("Show/hide romaji & kana (R)")
+                    .clicked()
                     {
                         self.dispatch(Command::ToggleRomaji, ctx, h, mi);
                     }
                     if icon_button(
                         ui,
                         egui::include_image!("../assets/icons/clock-afternoon.svg"),
-                        ink,
+                        ICON,
                         sz,
                     )
                     .on_hover_text("Toggle 24h / 12h (F)")
@@ -170,7 +177,7 @@ impl ClockApp {
                     {
                         self.dispatch(Command::ToggleFormat, ctx, h, mi);
                     }
-                    if icon_button(ui, egui::include_image!("../assets/icons/gear-six.svg"), ink, sz)
+                    if icon_button(ui, egui::include_image!("../assets/icons/gear-six.svg"), ICON, sz)
                         .on_hover_text("Settings (S)")
                         .clicked()
                     {
@@ -226,15 +233,19 @@ impl ClockApp {
                     ui.add_space(8.0 * s);
 
                     self.speakable(ui, &t.kanji, 46.0 * s, theme.accent, Line::Time, &t.kanji);
+                    ui.add_space(7.0 * s);
                     self.reading_line(ui, Line::Time, &t.kana, 24.0 * s, theme);
                     if self.show_romaji {
+                        ui.add_space(6.0 * s);
                         label(ui, &t.romaji, 22.0 * s, theme.dim);
                     }
-                    ui.add_space(6.0 * s);
+                    ui.add_space(16.0 * s);
 
                     self.speakable(ui, &dt.kanji, 30.0 * s, theme.ink, Line::Date, &dt.kanji);
+                    ui.add_space(7.0 * s);
                     self.reading_line(ui, Line::Date, &dt.kana, 20.0 * s, theme);
                     if self.show_romaji {
+                        ui.add_space(6.0 * s);
                         label(ui, &dt.romaji, 18.0 * s, theme.dim);
                     }
                 });
@@ -263,12 +274,11 @@ impl ClockApp {
 
     /// A centred line with a tap-to-hear speaker to its left.
     fn speakable(&mut self, ui: &mut egui::Ui, text: &str, size: f32, color: Color32, line: Line, say: &str) {
-        let accent = self.theme.accent;
         ui.horizontal(|ui| {
             let isz = (size * 0.30).clamp(15.0, 28.0);
             let gap = isz * 0.4;
             center_pad(ui, isz + gap + measure(ui.ctx(), text, size));
-            if speaker_icon(ui, accent, isz).clicked() {
+            if speaker_icon(ui, ICON, isz).clicked() {
                 self.speak_line(line, say);
             }
             ui.add_space(gap);
@@ -286,7 +296,7 @@ impl ClockApp {
                     if icon_button(
                         ui,
                         egui::include_image!("../assets/icons/arrow-left.svg"),
-                        theme.ink,
+                        ICON,
                         egui::vec2(18.0, 18.0),
                     )
                     .on_hover_text("Back to the clock (S / Esc)")
