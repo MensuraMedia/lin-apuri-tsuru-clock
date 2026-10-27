@@ -13,10 +13,12 @@ path = "src/main.rs"
 
 [features]
 default = ["gui", "audio"]
-gui = ["dep:eframe"]       # the egui/eframe/wgpu desktop window
+gui = ["dep:eframe", "dep:egui_extras", "dep:resvg"]  # egui/eframe/wgpu window + SVG icons
 audio = []                 # spoken time/date playback (uses the OS audio player; no build deps)
 
 [dependencies]
 jptime = { path = "../jptime" }
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+egui_extras = { version = "0.31", optional = true, default-features = false, features = ["svg"] }
+resvg = { version = "0.44", optional = true, default-features = false }
 eframe = { version = "0.31", optional = true, default-features = false, features = ["wgpu", "default_fonts", "x11", "wayland"] }

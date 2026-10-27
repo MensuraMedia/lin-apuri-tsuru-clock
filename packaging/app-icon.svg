@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="lin-apuri-tsuru-clock">
+  <rect x="8" y="8" width="240" height="240" rx="48" fill="#0A0A0C" stroke="#FFFFFF1A" stroke-width="2"/>
+  <circle cx="128" cy="128" r="80" fill="none" stroke="#FFD400" stroke-width="10"/>
+  <g stroke="#FFD400" stroke-width="10" stroke-linecap="round">
+    <line x1="128" y1="128" x2="128" y2="78"/>
+    <line x1="128" y1="128" x2="166" y2="146"/>
+  </g>
+  <g stroke="#FFFFFF66" stroke-width="6" stroke-linecap="round">
+    <line x1="128" y1="56" x2="128" y2="68"/><line x1="128" y1="188" x2="128" y2="200"/>
+    <line x1="56" y1="128" x2="68" y2="128"/><line x1="188" y1="128" x2="200" y2="128"/>
+  </g>
+</svg>

@@ -28,8 +28,13 @@ impl Command {
 
     /// Parse a command from its id.
     pub fn from_id(id: &str) -> Option<Command> {
-        [Command::SpeakTime, Command::ToggleRomaji, Command::ToggleFormat, Command::Quit]
-            .into_iter()
-            .find(|c| c.id() == id)
+        [
+            Command::SpeakTime,
+            Command::ToggleRomaji,
+            Command::ToggleFormat,
+            Command::Quit,
+        ]
+        .into_iter()
+        .find(|c| c.id() == id)
     }
 }

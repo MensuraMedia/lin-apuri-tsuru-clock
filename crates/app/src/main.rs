@@ -2,17 +2,23 @@
 //!
 //! GUI by default (feature `gui`); `--once` or a no-GUI build prints one reading.
 
-mod command;
-#[cfg(feature = "audio")]
-mod audio;
 #[cfg(feature = "gui")]
 mod app;
+#[cfg(feature = "audio")]
+mod audio;
+mod command;
+#[cfg(feature = "gui")]
+mod icons;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.iter().any(|a| a == "--list-commands") {
-        for c in [command::Command::SpeakTime, command::Command::ToggleRomaji,
-                  command::Command::ToggleFormat, command::Command::Quit] {
+        for c in [
+            command::Command::SpeakTime,
+            command::Command::ToggleRomaji,
+            command::Command::ToggleFormat,
+            command::Command::Quit,
+        ] {
             println!("{}", c.id());
         }
         return;
@@ -53,10 +59,10 @@ fn run_speak() {
     {
         use chrono::{Local, Timelike};
         let now = Local::now();
-        if let Some(p) = audio::Player::new("assets/audio") {
-            if p.speak_time(now.hour() as u8, now.minute() as u8) {
-                return;
-            }
+        if let Some(p) = audio::Player::new("assets/audio")
+            && p.speak_time(now.hour() as u8, now.minute() as u8)
+        {
+            return;
         }
         eprintln!("no audio player or no clip for this time (see docs/AUDIO.md)");
     }

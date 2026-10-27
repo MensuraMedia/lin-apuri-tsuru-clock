@@ -24,16 +24,60 @@ pub struct Reading {
     pub romaji: String,
 }
 
-const ONES_KANA: [&str; 10] = ["", "いち", "に", "さん", "よん", "ご", "ろく", "なな", "はち", "きゅう"];
-const ONES_ROMAJI: [&str; 10] = ["", "ichi", "ni", "san", "yon", "go", "roku", "nana", "hachi", "kyuu"];
-const HUND_KANA: [&str; 10] =
-    ["", "ひゃく", "にひゃく", "さんびゃく", "よんひゃく", "ごひゃく", "ろっぴゃく", "ななひゃく", "はっぴゃく", "きゅうひゃく"];
-const HUND_ROMAJI: [&str; 10] =
-    ["", "hyaku", "nihyaku", "sanbyaku", "yonhyaku", "gohyaku", "roppyaku", "nanahyaku", "happyaku", "kyuuhyaku"];
-const THOU_KANA: [&str; 10] =
-    ["", "せん", "にせん", "さんぜん", "よんせん", "ごせん", "ろくせん", "ななせん", "はっせん", "きゅうせん"];
-const THOU_ROMAJI: [&str; 10] =
-    ["", "sen", "nisen", "sanzen", "yonsen", "gosen", "rokusen", "nanasen", "hassen", "kyuusen"];
+const ONES_KANA: [&str; 10] = [
+    "",
+    "いち",
+    "に",
+    "さん",
+    "よん",
+    "ご",
+    "ろく",
+    "なな",
+    "はち",
+    "きゅう",
+];
+const ONES_ROMAJI: [&str; 10] = [
+    "", "ichi", "ni", "san", "yon", "go", "roku", "nana", "hachi", "kyuu",
+];
+const HUND_KANA: [&str; 10] = [
+    "",
+    "ひゃく",
+    "にひゃく",
+    "さんびゃく",
+    "よんひゃく",
+    "ごひゃく",
+    "ろっぴゃく",
+    "ななひゃく",
+    "はっぴゃく",
+    "きゅうひゃく",
+];
+const HUND_ROMAJI: [&str; 10] = [
+    "",
+    "hyaku",
+    "nihyaku",
+    "sanbyaku",
+    "yonhyaku",
+    "gohyaku",
+    "roppyaku",
+    "nanahyaku",
+    "happyaku",
+    "kyuuhyaku",
+];
+const THOU_KANA: [&str; 10] = [
+    "",
+    "せん",
+    "にせん",
+    "さんぜん",
+    "よんせん",
+    "ごせん",
+    "ろくせん",
+    "ななせん",
+    "はっせん",
+    "きゅうせん",
+];
+const THOU_ROMAJI: [&str; 10] = [
+    "", "sen", "nisen", "sanzen", "yonsen", "gosen", "rokusen", "nanasen", "hassen", "kyuusen",
+];
 
 fn number(n: i32, ones: &[&str; 10], hund: &[&str; 10], thou: &[&str; 10], juu: &str) -> String {
     if n <= 0 || n >= 10000 {
@@ -59,27 +103,76 @@ fn number(n: i32, ones: &[&str; 10], hund: &[&str; 10], thou: &[&str; 10], juu: 
 }
 
 const HOUR_KANA: [&str; 13] = [
-    "", "いちじ", "にじ", "さんじ", "よじ", "ごじ", "ろくじ", "しちじ", "はちじ", "くじ", "じゅうじ", "じゅういちじ", "じゅうにじ",
+    "",
+    "いちじ",
+    "にじ",
+    "さんじ",
+    "よじ",
+    "ごじ",
+    "ろくじ",
+    "しちじ",
+    "はちじ",
+    "くじ",
+    "じゅうじ",
+    "じゅういちじ",
+    "じゅうにじ",
 ];
 const HOUR_ROMAJI: [&str; 13] = [
-    "", "ichi-ji", "ni-ji", "san-ji", "yo-ji", "go-ji", "roku-ji", "shichi-ji", "hachi-ji", "ku-ji", "juu-ji",
-    "juuichi-ji", "juuni-ji",
+    "",
+    "ichi-ji",
+    "ni-ji",
+    "san-ji",
+    "yo-ji",
+    "go-ji",
+    "roku-ji",
+    "shichi-ji",
+    "hachi-ji",
+    "ku-ji",
+    "juu-ji",
+    "juuichi-ji",
+    "juuni-ji",
 ];
-const MIN_ONES_KANA: [&str; 10] =
-    ["", "いっぷん", "にふん", "さんぷん", "よんぷん", "ごふん", "ろっぷん", "ななふん", "はっぷん", "きゅうふん"];
-const MIN_ONES_ROMAJI: [&str; 10] =
-    ["", "ippun", "nifun", "sanpun", "yonpun", "gofun", "roppun", "nanafun", "happun", "kyuufun"];
+const MIN_ONES_KANA: [&str; 10] = [
+    "",
+    "いっぷん",
+    "にふん",
+    "さんぷん",
+    "よんぷん",
+    "ごふん",
+    "ろっぷん",
+    "ななふん",
+    "はっぷん",
+    "きゅうふん",
+];
+const MIN_ONES_ROMAJI: [&str; 10] = [
+    "", "ippun", "nifun", "sanpun", "yonpun", "gofun", "roppun", "nanafun", "happun", "kyuufun",
+];
 const MIN_TENS_KANA: [&str; 6] = ["", "じゅう", "にじゅう", "さんじゅう", "よんじゅう", "ごじゅう"];
 const MIN_TENS_ROMAJI: [&str; 6] = ["", "juu", "nijuu", "sanjuu", "yonjuu", "gojuu"];
-const MIN_TEN0_KANA: [&str; 6] = ["", "じゅっぷん", "にじゅっぷん", "さんじゅっぷん", "よんじゅっぷん", "ごじゅっぷん"];
+const MIN_TEN0_KANA: [&str; 6] = [
+    "",
+    "じゅっぷん",
+    "にじゅっぷん",
+    "さんじゅっぷん",
+    "よんじゅっぷん",
+    "ごじゅっぷん",
+];
 const MIN_TEN0_ROMAJI: [&str; 6] = ["", "juppun", "nijuppun", "sanjuppun", "yonjuppun", "gojuppun"];
 
 /// Reading of a 24-hour time. `:30` is read as 半 (han).
 pub fn time_reading(h24: u8, minute: u8) -> Reading {
     assert!(h24 < 24 && minute < 60, "time out of range");
-    let (period_k, period_r) = if h24 < 12 { ("午前", "gozen") } else { ("午後", "gogo") };
+    let (period_k, period_r) = if h24 < 12 {
+        ("午前", "gozen")
+    } else {
+        ("午後", "gogo")
+    };
     let period_kana = if h24 < 12 { "ごぜん" } else { "ごご" };
-    let h12 = if h24 % 12 == 0 { 12 } else { (h24 % 12) as usize };
+    let h12 = if h24.is_multiple_of(12) {
+        12
+    } else {
+        (h24 % 12) as usize
+    };
 
     if minute == 30 {
         return Reading {
@@ -89,7 +182,11 @@ pub fn time_reading(h24: u8, minute: u8) -> Reading {
         };
     }
     let (min_kana, min_romaji) = minute_reading(minute);
-    let min_kanji = if minute == 0 { String::new() } else { format!("{minute}分") };
+    let min_kanji = if minute == 0 {
+        String::new()
+    } else {
+        format!("{minute}分")
+    };
     let sep = if min_romaji.is_empty() { "" } else { " " };
     Reading {
         kanji: format!("{period_k}{h12}時{min_kanji}"),
@@ -114,12 +211,34 @@ fn minute_reading(m: u8) -> (String, String) {
 }
 
 const MONTH_KANA: [&str; 13] = [
-    "", "いちがつ", "にがつ", "さんがつ", "しがつ", "ごがつ", "ろくがつ", "しちがつ", "はちがつ", "くがつ", "じゅうがつ",
-    "じゅういちがつ", "じゅうにがつ",
+    "",
+    "いちがつ",
+    "にがつ",
+    "さんがつ",
+    "しがつ",
+    "ごがつ",
+    "ろくがつ",
+    "しちがつ",
+    "はちがつ",
+    "くがつ",
+    "じゅうがつ",
+    "じゅういちがつ",
+    "じゅうにがつ",
 ];
 const MONTH_ROMAJI: [&str; 13] = [
-    "", "ichigatsu", "nigatsu", "sangatsu", "shigatsu", "gogatsu", "rokugatsu", "shichigatsu", "hachigatsu",
-    "kugatsu", "juugatsu", "juuichigatsu", "juunigatsu",
+    "",
+    "ichigatsu",
+    "nigatsu",
+    "sangatsu",
+    "shigatsu",
+    "gogatsu",
+    "rokugatsu",
+    "shichigatsu",
+    "hachigatsu",
+    "kugatsu",
+    "juugatsu",
+    "juuichigatsu",
+    "juunigatsu",
 ];
 const WEEKDAY: [(&str, &str, &str); 7] = [
     ("日曜日", "にちようび", "nichiyoubi"),
@@ -144,10 +263,19 @@ pub fn weekday_sun0(y: i32, m: u8, d: u8) -> usize {
 
 fn day_reading(d: u8) -> (String, String) {
     const SPECIAL: [(u8, &str, &str); 13] = [
-        (1, "ついたち", "tsuitachi"), (2, "ふつか", "futsuka"), (3, "みっか", "mikka"), (4, "よっか", "yokka"),
-        (5, "いつか", "itsuka"), (6, "むいか", "muika"), (7, "なのか", "nanoka"), (8, "ようか", "youka"),
-        (9, "ここのか", "kokonoka"), (10, "とおか", "tooka"), (14, "じゅうよっか", "juuyokka"),
-        (20, "はつか", "hatsuka"), (24, "にじゅうよっか", "nijuuyokka"),
+        (1, "ついたち", "tsuitachi"),
+        (2, "ふつか", "futsuka"),
+        (3, "みっか", "mikka"),
+        (4, "よっか", "yokka"),
+        (5, "いつか", "itsuka"),
+        (6, "むいか", "muika"),
+        (7, "なのか", "nanoka"),
+        (8, "ようか", "youka"),
+        (9, "ここのか", "kokonoka"),
+        (10, "とおか", "tooka"),
+        (14, "じゅうよっか", "juuyokka"),
+        (20, "はつか", "hatsuka"),
+        (24, "にじゅうよっか", "nijuuyokka"),
     ];
     if let Some(&(_, k, r)) = SPECIAL.iter().find(|&&(n, _, _)| n == d) {
         return (k.into(), r.into());
@@ -183,7 +311,10 @@ fn year_reading(y: i32) -> (String, String) {
 
 /// Reading of a date, including the day of the week.
 pub fn date_reading(y: i32, m: u8, d: u8) -> Reading {
-    assert!((1..=12).contains(&m) && (1..=31).contains(&d), "date out of range");
+    assert!(
+        (1..=12).contains(&m) && (1..=31).contains(&d),
+        "date out of range"
+    );
     let (wk_k, wk_kana, wk_r) = WEEKDAY[weekday_sun0(y, m, d)];
     let (year_k, year_r) = year_reading(y);
     let (day_k, day_r) = day_reading(d);
@@ -196,7 +327,15 @@ pub fn date_reading(y: i32, m: u8, d: u8) -> Reading {
 
 /// English weekday name (for the big top line, like the stock clock).
 pub fn weekday_en(y: i32, m: u8, d: u8) -> &'static str {
-    ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][weekday_sun0(y, m, d)]
+    [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+    ][weekday_sun0(y, m, d)]
 }
 
 /// Part of day for the subtitle line (Morning / Afternoon / Evening / Night).
@@ -235,7 +374,11 @@ mod tests {
         assert_eq!(r.romaji, "nisennijuurokunen juugatsu nijuushichinichi kayoubi");
         assert!(date_reading(2026, 4, 1).kana.contains("しがつついたち")); // April, 1st
         assert!(date_reading(2026, 9, 20).kana.contains("くがつはつか")); // Sep, 20th
-        assert!(date_reading(2024, 2, 29).romaji.contains("nisennijuuyonen nigatsu nijuukunichi"));
+        assert!(
+            date_reading(2024, 2, 29)
+                .romaji
+                .contains("nisennijuuyonen nigatsu nijuukunichi")
+        );
     }
 
     #[test]

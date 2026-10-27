@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=lin-apuri-tsūru-clock
+GenericName=Japanese Learning Clock
+Comment=24-hour clock with live Japanese time and date readings, and audio
+Exec=linclock
+Icon=lin-apuri-tsuru-clock
+Terminal=false
+Categories=Education;Languages;Utility;Clock;
+Keywords=clock;japanese;time;learning;日本語;kanji;romaji;
+StartupWMClass=lin-apuri-tsuru-clock
+StartupNotify=true

@@ -1,5 +1,6 @@
 //! The egui/eframe clock view: flat dark theme, 24-hour digits, Japanese reading.
-#![cfg(feature = "gui")]
+//! Responsive layout (scales with the window), kana + romaji helper lines,
+//! keyboard shortcuts and labelled controls.
 
 use crate::command::Command;
 use chrono::{Datelike, Local, Timelike};
@@ -11,12 +12,24 @@ const INK: Color32 = Color32::from_rgb(236, 238, 240);
 const DIM: Color32 = Color32::from_rgb(150, 155, 162);
 const ACCENT: Color32 = Color32::from_rgb(255, 212, 0);
 
+/// Launch the desktop window.
+///
+/// # Errors
+/// Returns any error from `eframe`/winit/wgpu while creating the window.
 pub fn run() -> eframe::Result<()> {
+    let (iw, ih, irgba) =
+        crate::icons::rasterize(include_bytes!("../assets/icons/clock.svg"), 256, [255, 212, 0]);
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([820.0, 620.0])
-            .with_min_inner_size([480.0, 360.0])
-            .with_title("lin-apuri-tsūru-clock"),
+            .with_inner_size([820.0, 780.0])
+            .with_min_inner_size([460.0, 480.0])
+            .with_app_id("lin-apuri-tsuru-clock")
+            .with_title("lin-apuri-tsūru-clock")
+            .with_icon(egui::IconData {
+                rgba: irgba,
+                width: iw,
+                height: ih,
+            }),
         ..Default::default()
     };
     eframe::run_native(
@@ -36,8 +49,9 @@ struct ClockApp {
 impl ClockApp {
     fn new(cc: &eframe::CreationContext<'_>) -> Self {
         install_japanese_font(&cc.egui_ctx);
+        egui_extras::install_image_loaders(&cc.egui_ctx);
         apply_flat_dark(&cc.egui_ctx);
-        ClockApp {
+        Self {
             show_romaji: true,
             fmt24: true,
             #[cfg(feature = "audio")]
@@ -56,11 +70,60 @@ impl ClockApp {
                     let _ = p.speak_time(h, m);
                 }
                 #[cfg(not(feature = "audio"))]
-                {
-                    let _ = (h, m);
-                }
+                let _ = (h, m);
             }
         }
+    }
+
+    /// Bottom control bar (mouse); the same actions have keyboard shortcuts.
+    fn controls(&mut self, ctx: &egui::Context, h: u8, mi: u8) {
+        egui::TopBottomPanel::bottom("controls")
+            .frame(egui::Frame::new().fill(BG).inner_margin(8.0))
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    let sz = egui::vec2(15.0, 15.0);
+                    let speak = egui::Button::image_and_text(
+                        egui::Image::new(egui::include_image!("../assets/icons/speaker-high.svg"))
+                            .tint(INK)
+                            .fit_to_exact_size(sz),
+                        "Speak",
+                    );
+                    if ui
+                        .add(speak)
+                        .on_hover_text("Speak the time in Japanese (Space)")
+                        .clicked()
+                    {
+                        self.dispatch(Command::SpeakTime, ctx, h, mi);
+                    }
+                    let romaji = egui::Button::image_and_text(
+                        egui::Image::new(egui::include_image!("../assets/icons/translate.svg"))
+                            .tint(INK)
+                            .fit_to_exact_size(sz),
+                        "Romaji",
+                    );
+                    if ui
+                        .add(romaji)
+                        .on_hover_text("Show/hide the romaji helper (R)")
+                        .clicked()
+                    {
+                        self.dispatch(Command::ToggleRomaji, ctx, h, mi);
+                    }
+                    let fmt = if self.fmt24 { "24h" } else { "12h" };
+                    let format = egui::Button::image_and_text(
+                        egui::Image::new(egui::include_image!("../assets/icons/clock-afternoon.svg"))
+                            .tint(INK)
+                            .fit_to_exact_size(sz),
+                        fmt,
+                    );
+                    if ui.add(format).on_hover_text("Toggle 24h / 12h (F)").clicked() {
+                        self.dispatch(Command::ToggleFormat, ctx, h, mi);
+                    }
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        ui.label(RichText::new("VOICEVOX:No.7（アナウンス）").size(12.0).color(DIM))
+                            .on_hover_text("Japanese voice — attribution required");
+                    });
+                });
+            });
     }
 }
 
@@ -71,7 +134,6 @@ impl eframe::App for ClockApp {
         let (y, mo, d) = (now.year(), now.month() as u8, now.day() as u8);
         let (h, mi) = (now.hour() as u8, now.minute() as u8);
 
-        // keyboard shortcuts -> commands
         for (key, cmd) in [
             (egui::Key::Space, Command::SpeakTime),
             (egui::Key::R, Command::ToggleRomaji),
@@ -92,48 +154,33 @@ impl eframe::App for ClockApp {
             format!("{h12}:{mi:02} {}", if h < 12 { "AM" } else { "PM" })
         };
 
+        self.controls(ctx, h, mi);
+
         egui::CentralPanel::default()
             .frame(egui::Frame::new().fill(BG).inner_margin(24.0))
             .show(ctx, |ui| {
+                let s = (ui.available_height() / 720.0).clamp(0.5, 1.2);
                 ui.vertical_centered(|ui| {
-                    ui.add_space(8.0);
-                    label(ui, &jptime::weekday_en(y, mo, d).to_uppercase(), 64.0, INK);
-                    label(ui, &jptime::part_of_day(h).to_uppercase(), 34.0, DIM);
-                    ui.add_space(6.0);
-                    label(ui, &clock, 150.0, INK);
-                    label(ui, &format!("{} {} {}", d, month_en(mo), y), 34.0, INK);
-                    ui.add_space(10.0);
-                    rule(ui);
-                    ui.add_space(10.0);
-                    label(ui, &t.kanji, 56.0, ACCENT);
+                    ui.add_space(6.0 * s);
+                    label(ui, &jptime::weekday_en(y, mo, d).to_uppercase(), 62.0 * s, INK);
+                    label(ui, &jptime::part_of_day(h).to_uppercase(), 32.0 * s, DIM);
+                    ui.add_space(4.0 * s);
+                    label(ui, &clock, 150.0 * s, INK);
+                    label(ui, &format!("{d} {} {y}", month_en(mo)), 32.0 * s, INK);
+                    ui.add_space(10.0 * s);
+                    rule(ui, s);
+                    ui.add_space(10.0 * s);
+                    label(ui, &t.kanji, 54.0 * s, ACCENT);
+                    label(ui, &t.kana, 26.0 * s, DIM);
                     if self.show_romaji {
-                        label(ui, &t.romaji, 30.0, DIM);
+                        label(ui, &t.romaji, 24.0 * s, DIM);
                     }
-                    label(ui, &dt.kanji, 34.0, INK);
+                    ui.add_space(4.0 * s);
+                    label(ui, &dt.kanji, 32.0 * s, INK);
                     if self.show_romaji {
-                        label(ui, &dt.romaji, 22.0, DIM);
+                        label(ui, &dt.romaji, 20.0 * s, DIM);
                     }
                 });
-
-                // bottom controls (mouse users); keys also work
-                egui::TopBottomPanel::bottom("controls")
-                    .frame(egui::Frame::new().fill(BG))
-                    .show_inside(ui, |ui| {
-                        ui.horizontal(|ui| {
-                            if ui.button("🔊 Speak  (space)").clicked() {
-                                self.dispatch(Command::SpeakTime, ctx, h, mi);
-                            }
-                            if ui.button("あ Romaji  (r)").clicked() {
-                                self.dispatch(Command::ToggleRomaji, ctx, h, mi);
-                            }
-                            if ui.button("24h / 12h  (f)").clicked() {
-                                self.dispatch(Command::ToggleFormat, ctx, h, mi);
-                            }
-                            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                                ui.label(RichText::new("VOICEVOX:No.7（アナウンス）").size(12.0).color(DIM));
-                            });
-                        });
-                    });
             });
     }
 }
@@ -142,15 +189,28 @@ fn label(ui: &mut egui::Ui, text: &str, size: f32, color: Color32) {
     ui.label(RichText::new(text).size(size).color(color).strong());
 }
 
-fn rule(ui: &mut egui::Ui) {
-    let w = ui.available_width() * 0.6;
-    let (rect, _) = ui.allocate_exact_size(egui::vec2(w, 3.0), egui::Sense::hover());
+fn rule(ui: &mut egui::Ui, scale: f32) {
+    let w = ui.available_width() * 0.55;
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(w, 3.0 * scale), egui::Sense::hover());
     ui.painter().rect_filled(rect, 0.0, ACCENT);
 }
 
 fn month_en(m: u8) -> &'static str {
-    ["", "January", "February", "March", "April", "May", "June", "July", "August", "September",
-     "October", "November", "December"][m as usize]
+    [
+        "",
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+    ][m as usize]
 }
 
 /// Flat dark theme: no rounding, dark fills, light text.
@@ -161,8 +221,11 @@ fn apply_flat_dark(ctx: &egui::Context) {
     v.extreme_bg_color = BG;
     v.override_text_color = Some(INK);
     for w in [
-        &mut v.widgets.noninteractive, &mut v.widgets.inactive, &mut v.widgets.hovered,
-        &mut v.widgets.active, &mut v.widgets.open,
+        &mut v.widgets.noninteractive,
+        &mut v.widgets.inactive,
+        &mut v.widgets.hovered,
+        &mut v.widgets.active,
+        &mut v.widgets.open,
     ] {
         w.corner_radius = egui::CornerRadius::ZERO;
     }
@@ -170,7 +233,6 @@ fn apply_flat_dark(ctx: &egui::Context) {
 }
 
 /// Best-effort: install a system Japanese font so kanji/kana render.
-/// If none is found the app still runs (romaji always renders).
 fn install_japanese_font(ctx: &egui::Context) {
     const CANDIDATES: &[&str] = &[
         "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
@@ -181,9 +243,20 @@ fn install_japanese_font(ctx: &egui::Context) {
     for path in CANDIDATES {
         if let Ok(bytes) = std::fs::read(path) {
             let mut fonts = egui::FontDefinitions::default();
-            fonts.font_data.insert("jp".to_owned(), std::sync::Arc::new(egui::FontData::from_owned(bytes)));
-            fonts.families.entry(FontFamily::Proportional).or_default().insert(0, "jp".to_owned());
-            fonts.families.entry(FontFamily::Monospace).or_default().push("jp".to_owned());
+            fonts.font_data.insert(
+                "jp".to_owned(),
+                std::sync::Arc::new(egui::FontData::from_owned(bytes)),
+            );
+            fonts
+                .families
+                .entry(FontFamily::Proportional)
+                .or_default()
+                .insert(0, "jp".to_owned());
+            fonts
+                .families
+                .entry(FontFamily::Monospace)
+                .or_default()
+                .push("jp".to_owned());
             ctx.set_fonts(fonts);
             return;
         }

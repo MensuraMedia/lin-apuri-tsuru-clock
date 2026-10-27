@@ -6,6 +6,8 @@ It grew out of [`clock-mod`](https://github.com/MensuraMedia/clock-mod) (revivin
 
 This repository is also intended as a **reference skeleton**: a modular, universal Rust-app foundation (workspace layering, a unified command registry, dual licensing, documented engines) that other projects can fork.
 
+<p align="center"><img src="assets/screenshots/clock.png" alt="The clock: TUESDAY / AFTERNOON / 13:21 / 27 October 2026, with the Japanese reading 午後1時21分 (kana + romaji) and the date in Japanese, flat dark theme with an icon toolbar" width="440"></p>
+
 ---
 
 ## Table of contents
@@ -20,7 +22,8 @@ This repository is also intended as a **reference skeleton**: a modular, univers
 8. [Universal principles (reuse as a template)](#8-universal-principles-reuse-as-a-template)
 9. [Project layout](#9-project-layout)
 10. [Roadmap](#10-roadmap)
-11. [Licence & credits](#11-licence--credits)
+11. [Built with — tools, skills & MCP](#11-built-with--tools-skills--mcp)
+12. [Licence & credits](#12-licence--credits)
 
 ---
 
@@ -45,7 +48,8 @@ This repository is also intended as a **reference skeleton**: a modular, univers
 | **Graphics / rendering** | **wgpu** (Vulkan / Metal / DirectX 12 / WebGPU). |
 | **Windowing** | `winit` via `eframe`. |
 | **Time** | `chrono` (local time, calendar, weekday) — the only runtime dependency of the core beyond the UI. |
-| **Audio playback** | `rodio` (+ `symphonia` MP3 decode), cross-platform. |
+| **Audio playback** | The **OS audio player** (`paplay` / `pw-play` / `aplay` / `afplay`), spawned per clip — zero audio build dependencies. |
+| **Icons** | **Phosphor** (MIT), bundled locally. Window/taskbar/Alt-Tab icon via `resvg`; toolbar via `egui_extras`' SVG loader, tinted to the theme. |
 | **Audio engine (content)** | **VOICEVOX** (Japanese-native TTS) driven by the `voicepack` pipeline, producing a validated clip bank. See [docs/AUDIO.md](docs/AUDIO.md). |
 | **Reading engine** | `jptime` — a dependency-free crate computing Japanese time/date readings (kanji, kana, romaji) with the irregular forms. |
 | **Command architecture** | A **unified command registry**: every UI action, shortcut and CLI call dispatches by the same `Command` id — enabling headless/agent use. |
@@ -59,21 +63,10 @@ Nothing is installed system-wide by the app. The optional VOICEVOX engine runs l
 
 Strict, simple **layering** — upper layers depend on lower, never the reverse:
 
-```
-          ┌───────────────────────────────┐
-          │  linclock (app)               │   egui/eframe window + CLI
-          │  ├─ app.rs      view/theme     │
-          │  ├─ command.rs  command registry
-          │  └─ audio.rs    playback (rodio)
-          └───────────────┬───────────────┘
-                          │ depends on
-          ┌───────────────▼───────────────┐
-          │  jptime (core)                │   pure readings, no I/O, no deps
-          └───────────────────────────────┘
-```
+<p align="center"><img src="docs/architecture.svg" alt="Two layers: jptime (pure core) below, linclock (application) above depending on it; the command registry is the single, highlighted dispatch point for GUI, keyboard and CLI" width="760"></p>
 
 - **`jptime`** is pure logic: given numbers in, it returns readings out. No time source, no UI, no files, `#![forbid(unsafe_code)]`. This makes it trivially testable and reusable (CLI, GUI, web, another project).
-- **`linclock`** owns everything impure: reading the system clock (`chrono`), drawing (`eframe`), and audio (`rodio`). GUI and audio are **feature-gated** (`gui`, `audio`) so a minimal CLI build has neither.
+- **`linclock`** owns everything impure: reading the system clock (`chrono`), drawing (`eframe`), and audio (an OS player). GUI and audio are **feature-gated** (`gui`, `audio`) so a minimal CLI build has neither.
 - **The command registry** (`command.rs`) is the single dispatch point: the GUI buttons, keyboard shortcuts and the CLI all resolve to a `Command` with a stable string id, so the app can be driven without a human (agent, script, or a future JSON/MCP channel).
 
 ---
@@ -96,14 +89,14 @@ Strict, simple **layering** — upper layers depend on lower, never the reverse:
 | Feature | Default | Enables |
 |---|---|---|
 | `gui` | on | the egui/eframe/wgpu desktop window |
-| `audio` | on | spoken time/date via `rodio` |
+| `audio` | on | spoken time/date via the OS audio player |
 
 | Module | Responsibility |
 |---|---|
 | `main.rs` | entry point; GUI when `gui`, else the CLI clock; `--once` prints one reading and exits |
-| `app.rs` | `ClockApp` (`eframe::App`): flat dark theme, 24-hour layout, Japanese lines, repaint each second |
+| `app.rs` | `ClockApp` (`eframe::App`): flat dark theme, responsive 24-hour layout, Japanese lines, window icon |
 | `command.rs` | `Command` enum + `id()`/`from_id()` — the unified registry |
-| `audio.rs` | `Player`: plays the clip for the current time; never panics without a device |
+| `audio.rs` | `Player`: spawns the OS audio player for the current clip; never panics without a device |
 
 ---
 
@@ -134,6 +127,21 @@ cargo run -p linclock --no-default-features -- --once
 ```
 
 Requirements: a Rust toolchain (edition 2024). The GUI needs a GPU/display at runtime; audio needs an output device and the clip bank. VOICEVOX is only needed to (re)generate clips.
+
+The clock always reads the **local OS time and timezone** (`chrono::Local`) — no network, no fixed time.
+
+### Desktop install (program menu · panel · Alt-Tab)
+
+User-level, no root — builds the release binary and installs a launcher + icon:
+
+```bash
+bash packaging/install.sh      # → menu entry, pinnable panel launcher, Alt-Tab icon
+bash packaging/uninstall.sh    # remove it
+bash packaging/build-packages.sh   # assemble AppImage / .deb (if the tools are present)
+```
+
+The launcher sets `StartupWMClass=lin-apuri-tsuru-clock` so the running window groups under
+its icon in the taskbar and Alt-Tab; the window itself also carries the icon at runtime.
 
 ---
 
@@ -172,15 +180,22 @@ lin-apuri-tsūru-clock/
 ├── CLAUDE.md                  build/test/run + conventions
 ├── changelog.md               append-only change log (ISO-8601)
 ├── LICENSE-MIT, LICENSE-APACHE
+├── CLAUDE.md · HANDOFF.md      conventions · engineer/agent handoff
+├── rust-toolchain.toml         pinned toolchain
+├── .github/workflows/ci.yml    fmt · clippy · test · build
 ├── crates/
-│   ├── jptime/                pure reading engine (lib + tests)
-│   └── app/  (linclock)       egui/eframe app + CLI
-│       └── src/ main.rs · app.rs · command.rs · audio.rs
+│   ├── jptime/                 pure reading engine (lib + tests)
+│   └── app/  (linclock)        egui/eframe app + CLI
+│       ├── src/ main.rs · app.rs · command.rs · audio.rs · icons.rs
+│       └── assets/icons/        bundled Phosphor icons (+ ATTRIBUTION)
 ├── assets/
-│   └── audio/                 spoken time/date clips (VOICEVOX)
+│   ├── audio/                  spoken time/date clips (VOICEVOX)
+│   └── screenshots/clock.png   the app
+├── packaging/                  .desktop · app-icon.svg · install/uninstall · build-packages
 └── docs/
     ├── ARCHITECTURE.md
-    └── AUDIO.md
+    ├── AUDIO.md
+    └── architecture.svg        the diagram
 ```
 
 ---
@@ -196,7 +211,21 @@ lin-apuri-tsūru-clock/
 
 ---
 
-## 11. Licence & credits
+## 11. Built with — tools, skills & MCP
+
+Developed with **Claude Code**. The practices and assets a reviewer can verify in-tree:
+
+| Concern | How |
+|---|---|
+| **Diagramming** | `docs/architecture.svg` follows the *diagram-design* skill: one accent colour, 1px hairlines, a 4px grid, WCAG-AA contrast, system fonts (offline), and `role="img"` + title/description for screen readers. |
+| **Iconography** | **Phosphor** icon set (local asset, MIT) bundled under `crates/app/assets/icons/` with `ATTRIBUTION.md`; rendered with `resvg` (window icon) and `egui_extras` (toolbar). |
+| **Voice** | **VOICEVOX** (speaker No.7「アナウンス」) via the `voicepack` pipeline — a local engine on `:50021`, attribution shown in-app. |
+| **Quality gates** | `rustfmt` + `clippy -D warnings` + tests, enforced in CI (`.github/workflows/ci.yml`); toolchain pinned via `rust-toolchain.toml`. |
+| **Agent / MCP seam** | The unified `Command` registry (stable string ids, `--list-commands` / `--cmd`) is the headless control surface — the hook for a future JSON/**MCP** channel. No MCP server is required to build or run the app. |
+
+---
+
+## 12. Licence & credits
 
 Dual-licensed under **MIT OR Apache-2.0** — your choice. See `LICENSE-MIT` and `LICENSE-APACHE`.
 

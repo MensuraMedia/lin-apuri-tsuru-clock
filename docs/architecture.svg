@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 468" width="760" height="468" role="img" aria-labelledby="t d" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
+  <title id="t">lin-apuri-tsūru-clock architecture</title>
+  <desc id="d">Two layers: the pure jptime core crate, and the linclock application above it which depends on the core. A unified command registry, highlighted, is the single dispatch point for the GUI, keyboard, and CLI.</desc>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#9AA0A6"/></marker>
+  </defs>
+  <rect x="0" y="0" width="760" height="468" rx="10" fill="#101114"/>
+  <rect x="0.5" y="0.5" width="759" height="467" rx="10" fill="none" stroke="#FFFFFF26"/>
+  <text x="32" y="44" font-family="Georgia, 'Times New Roman', serif" font-style="italic" font-size="19" fill="#E8EAED">Architecture — strict layering, one dispatch</text>
+
+  <!-- application layer -->
+  <rect x="32" y="72" width="696" height="208" rx="10" fill="#16181C" stroke="#FFFFFF26"/>
+  <text x="56" y="104" font-size="15" fill="#E8EAED">linclock — application</text>
+  <text x="56" y="124" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="11" fill="#9AA0A6">impure: reads the OS clock, draws, plays audio · gui / audio feature-gated</text>
+
+  <rect x="56" y="148" width="152" height="104" rx="8" fill="#101114" stroke="#FFFFFF26"/>
+  <text x="72" y="176" font-size="13" fill="#E8EAED">app.rs</text>
+  <text x="72" y="196" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="11" fill="#9AA0A6">egui / eframe</text>
+  <text x="72" y="212" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="11" fill="#9AA0A6">flat dark · 24h</text>
+  <text x="72" y="236" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="11" fill="#9AA0A6">icons.rs (svg)</text>
+
+  <!-- command registry: THE accent / focal element -->
+  <rect x="224" y="148" width="224" height="104" rx="8" fill="#1A1710" stroke="#FFD400" stroke-width="1.5"/>
+  <text x="244" y="176" font-size="13" fill="#FFD400">command.rs — registry</text>
+  <text x="244" y="198" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="11" fill="#E8EAED">one Command id →</text>
+  <text x="244" y="214" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="11" fill="#9AA0A6">GUI · keys · CLI · agent</text>
+  <text x="244" y="236" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="11" fill="#9AA0A6">headless-drivable</text>
+
+  <rect x="464" y="148" width="240" height="104" rx="8" fill="#101114" stroke="#FFFFFF26"/>
+  <text x="484" y="176" font-size="13" fill="#E8EAED">audio.rs</text>
+  <text x="484" y="196" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="11" fill="#9AA0A6">spawns OS player</text>
+  <text x="484" y="212" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="11" fill="#9AA0A6">VOICEVOX clip bank</text>
+  <text x="484" y="236" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="11" fill="#9AA0A6">never panics w/o device</text>
+
+  <!-- depends-on arrow -->
+  <line x1="380" y1="280" x2="380" y2="340" stroke="#9AA0A6" marker-end="url(#a)"/>
+  <text x="392" y="316" font-family="Georgia, serif" font-style="italic" font-size="13" fill="#9AA0A6">depends on</text>
+
+  <!-- core layer -->
+  <rect x="32" y="340" width="696" height="96" rx="10" fill="#16181C" stroke="#FFFFFF26"/>
+  <text x="56" y="372" font-size="15" fill="#E8EAED">jptime — core</text>
+  <text x="56" y="394" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="11" fill="#9AA0A6">pure readings in → out · no I/O, no time source, no deps · #![forbid(unsafe_code)]</text>
+  <text x="56" y="414" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="11" fill="#9AA0A6">time_reading · date_reading · weekday · part_of_day — every irregular form unit-tested</text>
+</svg>

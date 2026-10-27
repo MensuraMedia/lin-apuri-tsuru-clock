@@ -3,7 +3,6 @@
 //! by the project's audio engine (VOICEVOX via voicepack) as WAV clips under
 //! `assets/audio/`; this module just plays the clip for a given time.
 //! Best-effort: no player or clip = silence, never a panic.
-#![cfg(feature = "audio")]
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -16,7 +15,10 @@ pub struct Player {
 impl Player {
     /// Find an OS audio player and the clip directory. `None` if none is found.
     pub fn new(dir: impl AsRef<Path>) -> Option<Player> {
-        detect_player().map(|cmd| Player { dir: dir.as_ref().to_path_buf(), cmd })
+        detect_player().map(|cmd| Player {
+            dir: dir.as_ref().to_path_buf(),
+            cmd,
+        })
     }
 
     /// Play `assets/audio/time_HHMM.wav` for the time rounded down to the nearest
