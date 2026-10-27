@@ -1,11 +1,33 @@
 //! The egui/eframe clock view: themeable flat UI, 24-hour digits, Japanese
-//! reading, optional background images, brightness, and a settings panel.
+//! reading with a live karaoke underline (VOICEVOX), background images, and an
+//! in-app settings page.
 
+use crate::audio;
 use crate::command::Command;
 use crate::settings::{Background, BgMode, Theme};
 use chrono::{Datelike, Local, Timelike};
 use eframe::egui;
 use egui::{Color32, FontFamily, RichText};
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Page {
+    Clock,
+    Settings,
+}
+
+/// Which readable line a spoken utterance belongs to.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Line {
+    Time,
+    Date,
+}
+
+#[cfg(feature = "audio")]
+struct Playing {
+    which: Line,
+    start: std::time::Instant,
+    utt: audio::Utterance,
+}
 
 /// Launch the desktop window.
 ///
@@ -40,10 +62,14 @@ struct ClockApp {
     theme: Theme,
     brightness: f32,
     text_scale: f32,
-    settings_open: bool,
+    page: Page,
     background: Background,
     #[cfg(feature = "audio")]
-    player: Option<crate::audio::Player>,
+    speaker: Option<audio::Speaker>,
+    #[cfg(feature = "audio")]
+    rx: Option<std::sync::mpsc::Receiver<(Line, audio::Utterance)>>,
+    #[cfg(feature = "audio")]
+    playing: Option<Playing>,
 }
 
 impl ClockApp {
@@ -55,11 +81,15 @@ impl ClockApp {
             fmt24: true,
             theme: Theme::default_dark(),
             brightness: 1.0,
-            text_scale: 1.0,
-            settings_open: false,
+            text_scale: 0.85, // Compact by default
+            page: Page::Clock,
             background: Background::default(),
             #[cfg(feature = "audio")]
-            player: crate::audio::Player::new("assets/audio"),
+            speaker: audio::Speaker::detect(),
+            #[cfg(feature = "audio")]
+            rx: None,
+            #[cfg(feature = "audio")]
+            playing: None,
         }
     }
 
@@ -67,193 +97,97 @@ impl ClockApp {
         match cmd {
             Command::ToggleRomaji => self.show_romaji = !self.show_romaji,
             Command::ToggleFormat => self.fmt24 = !self.fmt24,
-            Command::ToggleSettings => self.settings_open = !self.settings_open,
+            Command::ToggleSettings => {
+                self.page = if self.page == Page::Settings {
+                    Page::Clock
+                } else {
+                    Page::Settings
+                };
+            }
             Command::Quit => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
             Command::SpeakTime => {
-                #[cfg(feature = "audio")]
-                if let Some(p) = &self.player {
-                    let _ = p.speak_time(h, m);
-                }
-                #[cfg(not(feature = "audio"))]
-                let _ = (h, m);
+                let k = jptime::time_reading(h, m).kanji;
+                self.speak_line(Line::Time, &k);
             }
         }
     }
 
-    /// Bottom control bar (mouse); the same actions have keyboard shortcuts.
+    /// Synthesise and play a line in Japanese (threaded), recording the timeline
+    /// so the UI can underline the sound being pronounced.
+    fn speak_line(&mut self, which: Line, text: &str) {
+        #[cfg(feature = "audio")]
+        {
+            if self.speaker.is_none() {
+                return;
+            }
+            let (tx, rx) = std::sync::mpsc::channel();
+            self.rx = Some(rx);
+            self.playing = None;
+            let text = text.to_owned();
+            std::thread::spawn(move || {
+                if let Some(s) = audio::Speaker::detect()
+                    && let Some(u) = s.speak(&text)
+                {
+                    let _ = tx.send((which, u));
+                }
+            });
+        }
+        #[cfg(not(feature = "audio"))]
+        let _ = (which, text);
+    }
+
+    /// Bottom control bar — icon-only (tooltips carry the labels).
     fn controls(&mut self, ctx: &egui::Context, h: u8, mi: u8) {
-        let (ink, dim, bg) = (self.theme.ink, self.theme.dim, self.theme.bg);
+        let ink = self.theme.ink;
+        let bg = self.theme.bg;
         egui::TopBottomPanel::bottom("controls")
             .frame(egui::Frame::new().fill(bg).inner_margin(8.0))
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
-                    let sz = egui::vec2(15.0, 15.0);
-                    let speak = egui::Button::image_and_text(
-                        egui::Image::new(egui::include_image!("../assets/icons/speaker-high.svg"))
-                            .tint(ink)
-                            .fit_to_exact_size(sz),
-                        "Speak",
-                    );
-                    if ui
-                        .add(speak)
-                        .on_hover_text("Speak the time in Japanese (Space)")
-                        .clicked()
+                    let sz = egui::vec2(18.0, 18.0);
+                    if icon_button(
+                        ui,
+                        egui::include_image!("../assets/icons/speaker-high.svg"),
+                        ink,
+                        sz,
+                    )
+                    .on_hover_text("Speak the time in Japanese (Space)")
+                    .clicked()
                     {
                         self.dispatch(Command::SpeakTime, ctx, h, mi);
                     }
-                    let romaji = egui::Button::image_and_text(
-                        egui::Image::new(egui::include_image!("../assets/icons/translate.svg"))
-                            .tint(ink)
-                            .fit_to_exact_size(sz),
-                        "Romaji",
-                    );
-                    if ui
-                        .add(romaji)
-                        .on_hover_text("Show/hide the romaji helper (R)")
+                    if icon_button(ui, egui::include_image!("../assets/icons/translate.svg"), ink, sz)
+                        .on_hover_text("Show/hide romaji & kana (R)")
                         .clicked()
                     {
                         self.dispatch(Command::ToggleRomaji, ctx, h, mi);
                     }
-                    let fmt = if self.fmt24 { "24h" } else { "12h" };
-                    let format = egui::Button::image_and_text(
-                        egui::Image::new(egui::include_image!("../assets/icons/clock-afternoon.svg"))
-                            .tint(ink)
-                            .fit_to_exact_size(sz),
-                        fmt,
-                    );
-                    if ui.add(format).on_hover_text("Toggle 24h / 12h (F)").clicked() {
+                    if icon_button(
+                        ui,
+                        egui::include_image!("../assets/icons/clock-afternoon.svg"),
+                        ink,
+                        sz,
+                    )
+                    .on_hover_text("Toggle 24h / 12h (F)")
+                    .clicked()
+                    {
                         self.dispatch(Command::ToggleFormat, ctx, h, mi);
                     }
-                    let gear = egui::Button::image_and_text(
-                        egui::Image::new(egui::include_image!("../assets/icons/gear-six.svg"))
-                            .tint(ink)
-                            .fit_to_exact_size(sz),
-                        "Settings",
-                    );
-                    if ui
-                        .add(gear)
-                        .on_hover_text("Theme, colours, brightness, background (S)")
+                    if icon_button(ui, egui::include_image!("../assets/icons/gear-six.svg"), ink, sz)
+                        .on_hover_text("Settings (S)")
                         .clicked()
                     {
                         self.dispatch(Command::ToggleSettings, ctx, h, mi);
                     }
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        ui.label(RichText::new("VOICEVOX:No.7（アナウンス）").size(12.0).color(dim))
-                            .on_hover_text("Japanese voice — attribution required");
-                    });
                 });
             });
     }
 
-    /// The settings panel (theme, colours, brightness, background images).
-    fn settings_window(&mut self, ctx: &egui::Context) {
-        let mut open = self.settings_open;
-        egui::Window::new("Settings")
-            .open(&mut open)
-            .resizable(false)
-            .collapsible(false)
-            .show(ctx, |ui| {
-                ui.strong("Theme");
-                ui.horizontal_wrapped(|ui| {
-                    for (name, th) in Theme::PRESETS {
-                        if ui.selectable_label(self.theme == th, name).clicked() {
-                            self.theme = th;
-                        }
-                    }
-                });
-                ui.add_space(4.0);
-                egui::Grid::new("colours").spacing([12.0, 6.0]).show(ui, |ui| {
-                    ui.label("Accent");
-                    ui.color_edit_button_srgba(&mut self.theme.accent);
-                    ui.end_row();
-                    ui.label("Text");
-                    ui.color_edit_button_srgba(&mut self.theme.ink);
-                    ui.end_row();
-                    ui.label("Background");
-                    ui.color_edit_button_srgba(&mut self.theme.bg);
-                    ui.end_row();
-                });
-                ui.add(egui::Slider::new(&mut self.brightness, 0.25..=1.0).text("Brightness"));
-                ui.horizontal(|ui| {
-                    ui.label("Text size");
-                    for (name, v) in [
-                        ("Compact", 0.85_f32),
-                        ("Standard", 1.0),
-                        ("Large", 1.25),
-                        ("Huge", 1.5),
-                    ] {
-                        if ui
-                            .selectable_label((self.text_scale - v).abs() < 0.01, name)
-                            .clicked()
-                        {
-                            self.text_scale = v;
-                        }
-                    }
-                });
-
-                ui.separator();
-                ui.strong("Background images");
-                ui.horizontal(|ui| {
-                    ui.label("Folder");
-                    ui.text_edit_singleline(&mut self.background.dir);
-                    if ui.button("Scan").clicked() {
-                        self.background.scan();
-                    }
-                });
-                if !self.background.status.is_empty() {
-                    ui.small(self.background.status.clone());
-                }
-                ui.horizontal_wrapped(|ui| {
-                    for m in [BgMode::None, BgMode::Fixed, BgMode::Slideshow, BgMode::Random] {
-                        ui.selectable_value(&mut self.background.mode, m, m.label());
-                    }
-                });
-                ui.add(egui::Slider::new(&mut self.background.blur, 0.0..=25.0).text("Blur"));
-                ui.add(egui::Slider::new(&mut self.background.scrim, 0.0..=0.9).text("Dim overlay"));
-                if matches!(self.background.mode, BgMode::Slideshow | BgMode::Random) {
-                    ui.add(
-                        egui::Slider::new(&mut self.background.interval_s, 3.0..=120.0).text("Interval (s)"),
-                    );
-                }
-                if self.background.mode == BgMode::Fixed && self.background.images.len() > 1 {
-                    ui.horizontal(|ui| {
-                        let n = self.background.images.len();
-                        if ui.button("◀ prev").clicked() {
-                            self.background.idx = (self.background.idx + n - 1) % n;
-                        }
-                        ui.label(format!("{} / {}", self.background.idx + 1, n));
-                        if ui.button("next ▶").clicked() {
-                            self.background.idx = (self.background.idx + 1) % n;
-                        }
-                    });
-                }
-            });
-        self.settings_open = open;
-    }
-}
-
-impl eframe::App for ClockApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        ctx.request_repaint_after(std::time::Duration::from_millis(500));
-        self.background.tick(ctx.input(|i| i.time));
-        apply_theme(ctx, &self.theme);
-
+    /// The clock face, with a speaker on each Japanese line and a karaoke underline.
+    fn clock_panel(&mut self, ctx: &egui::Context) {
         let now = Local::now();
         let (y, mo, d) = (now.year(), now.month() as u8, now.day() as u8);
         let (h, mi) = (now.hour() as u8, now.minute() as u8);
-
-        for (key, cmd) in [
-            (egui::Key::Space, Command::SpeakTime),
-            (egui::Key::R, Command::ToggleRomaji),
-            (egui::Key::F, Command::ToggleFormat),
-            (egui::Key::S, Command::ToggleSettings),
-            (egui::Key::Escape, Command::Quit),
-        ] {
-            if ctx.input(|i| i.key_pressed(key)) {
-                self.dispatch(cmd, ctx, h, mi);
-            }
-        }
-
         let t = jptime::time_reading(h, mi);
         let dt = jptime::date_reading(y, mo, d);
         let clock = if self.fmt24 {
@@ -262,19 +196,17 @@ impl eframe::App for ClockApp {
             let h12 = if h % 12 == 0 { 12 } else { h % 12 };
             format!("{h12}:{mi:02} {}", if h < 12 { "AM" } else { "PM" })
         };
-
-        self.controls(ctx, h, mi);
-
         let theme = self.theme;
         let bg_tex = self.background.texture(ctx);
         let scrim = self.background.scrim;
+
         egui::CentralPanel::default()
             .frame(egui::Frame::new().fill(theme.bg).inner_margin(24.0))
             .show(ctx, |ui| {
                 if let Some(tex) = &bg_tex {
                     let rect = ui.max_rect();
-                    let uv = cover_uv(tex.size(), rect.size());
-                    ui.painter().image(tex.id(), rect, uv, Color32::WHITE);
+                    ui.painter()
+                        .image(tex.id(), rect, cover_uv(tex.size(), rect.size()), Color32::WHITE);
                     let a = (scrim.clamp(0.0, 1.0) * 255.0) as u8;
                     let sc = Color32::from_rgba_unmultiplied(theme.bg.r(), theme.bg.g(), theme.bg.b(), a);
                     ui.painter().rect_filled(rect, 0.0, sc);
@@ -295,22 +227,214 @@ impl eframe::App for ClockApp {
                     ui.add_space(10.0 * s);
                     rule(ui, s, theme.accent);
                     ui.add_space(10.0 * s);
-                    label(ui, &t.kanji, 54.0 * s, theme.accent);
-                    label(ui, &t.kana, 26.0 * s, theme.dim);
+
+                    // ---- time: speaker + kanji, then karaoke kana + romaji ----
+                    ui.horizontal(|ui| {
+                        center_pad(ui, 54.0 * s * 0.6 + measure(ui.ctx(), &t.kanji, 54.0 * s));
+                        if speaker_icon(ui, theme.accent, 20.0 * s).clicked() {
+                            self.speak_line(Line::Time, &t.kanji);
+                        }
+                        label(ui, &t.kanji, 54.0 * s, theme.accent);
+                    });
+                    self.reading_line(ui, Line::Time, &t.kana, 26.0 * s, theme);
                     if self.show_romaji {
                         label(ui, &t.romaji, 24.0 * s, theme.dim);
                     }
-                    ui.add_space(4.0 * s);
-                    label(ui, &dt.kanji, 32.0 * s, theme.ink);
+
+                    ui.add_space(6.0 * s);
+
+                    // ---- date: speaker + kanji, then karaoke kana + romaji ----
+                    ui.horizontal(|ui| {
+                        center_pad(ui, 32.0 * s * 0.6 + measure(ui.ctx(), &dt.kanji, 32.0 * s));
+                        if speaker_icon(ui, theme.ink, 16.0 * s).clicked() {
+                            self.speak_line(Line::Date, &dt.kanji);
+                        }
+                        label(ui, &dt.kanji, 32.0 * s, theme.ink);
+                    });
                     if self.show_romaji {
-                        label(ui, &dt.romaji, 20.0 * s, theme.dim);
+                        self.reading_line(ui, Line::Date, &dt.romaji, 20.0 * s, theme);
                     }
                 });
             });
+    }
 
-        self.settings_window(ctx);
+    /// Render a reading line: the karaoke kana if that line is playing, else the
+    /// given fallback text.
+    fn reading_line(&self, ui: &mut egui::Ui, which: Line, fallback: &str, size: f32, theme: Theme) {
+        #[cfg(feature = "audio")]
+        if let Some(p) = self.playing.as_ref().filter(|p| p.which == which) {
+            karaoke_kana(
+                ui,
+                &p.utt.moras,
+                p.start.elapsed().as_secs_f32(),
+                size,
+                theme.dim,
+                theme.accent,
+            );
+            return;
+        }
+        #[cfg(not(feature = "audio"))]
+        let _ = which;
+        label(ui, fallback, size, theme.dim);
+    }
 
-        // brightness: a uniform dimmer over everything (nice at night)
+    /// The settings page (fills the window — not a floating window).
+    fn settings_page(&mut self, ctx: &egui::Context) {
+        let theme = self.theme;
+        egui::CentralPanel::default()
+            .frame(egui::Frame::new().fill(theme.bg).inner_margin(20.0))
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    if icon_button(
+                        ui,
+                        egui::include_image!("../assets/icons/arrow-left.svg"),
+                        theme.ink,
+                        egui::vec2(18.0, 18.0),
+                    )
+                    .on_hover_text("Back to the clock (S / Esc)")
+                    .clicked()
+                    {
+                        self.page = Page::Clock;
+                    }
+                    label(ui, "Settings", 24.0, theme.ink);
+                });
+                ui.add_space(6.0);
+                egui::ScrollArea::vertical().show(ui, |ui| self.settings_body(ui));
+            });
+    }
+
+    fn settings_body(&mut self, ui: &mut egui::Ui) {
+        ui.strong("Theme");
+        ui.horizontal_wrapped(|ui| {
+            for (name, th) in Theme::PRESETS {
+                if ui.selectable_label(self.theme == th, name).clicked() {
+                    self.theme = th;
+                }
+            }
+        });
+        ui.add_space(4.0);
+        egui::Grid::new("colours").spacing([12.0, 6.0]).show(ui, |ui| {
+            ui.label("Accent");
+            ui.color_edit_button_srgba(&mut self.theme.accent);
+            ui.end_row();
+            ui.label("Text");
+            ui.color_edit_button_srgba(&mut self.theme.ink);
+            ui.end_row();
+            ui.label("Background");
+            ui.color_edit_button_srgba(&mut self.theme.bg);
+            ui.end_row();
+        });
+        ui.add(egui::Slider::new(&mut self.brightness, 0.25..=1.0).text("Brightness"));
+        ui.horizontal(|ui| {
+            ui.label("Text size");
+            for (name, v) in [
+                ("Compact", 0.85_f32),
+                ("Standard", 1.0),
+                ("Large", 1.25),
+                ("Huge", 1.5),
+            ] {
+                if ui
+                    .selectable_label((self.text_scale - v).abs() < 0.01, name)
+                    .clicked()
+                {
+                    self.text_scale = v;
+                }
+            }
+        });
+
+        ui.separator();
+        ui.strong("Background images");
+        ui.horizontal(|ui| {
+            ui.label("Folder");
+            ui.text_edit_singleline(&mut self.background.dir);
+            if ui.button("Scan").clicked() {
+                self.background.scan();
+            }
+        });
+        if !self.background.status.is_empty() {
+            ui.small(self.background.status.clone());
+        }
+        ui.horizontal_wrapped(|ui| {
+            for m in [BgMode::None, BgMode::Fixed, BgMode::Slideshow, BgMode::Random] {
+                ui.selectable_value(&mut self.background.mode, m, m.label());
+            }
+        });
+        ui.add(egui::Slider::new(&mut self.background.blur, 0.0..=25.0).text("Blur"));
+        ui.add(egui::Slider::new(&mut self.background.scrim, 0.0..=0.9).text("Dim overlay"));
+        if matches!(self.background.mode, BgMode::Slideshow | BgMode::Random) {
+            ui.add(egui::Slider::new(&mut self.background.interval_s, 3.0..=120.0).text("Interval (s)"));
+        }
+        if self.background.mode == BgMode::Fixed && self.background.images.len() > 1 {
+            ui.horizontal(|ui| {
+                let n = self.background.images.len();
+                if ui.button("◀ prev").clicked() {
+                    self.background.idx = (self.background.idx + n - 1) % n;
+                }
+                ui.label(format!("{} / {}", self.background.idx + 1, n));
+                if ui.button("next ▶").clicked() {
+                    self.background.idx = (self.background.idx + 1) % n;
+                }
+            });
+        }
+
+        ui.separator();
+        ui.small("Voice: VOICEVOX No.7「アナウンス」— click a 🔊 on the clock to hear a line; the yellow underline tracks the sound being spoken.");
+    }
+}
+
+impl eframe::App for ClockApp {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        ctx.request_repaint_after(std::time::Duration::from_millis(500));
+        self.background.tick(ctx.input(|i| i.time));
+        apply_theme(ctx, &self.theme);
+
+        #[cfg(feature = "audio")]
+        {
+            if let Some(rx) = &self.rx
+                && let Ok((which, u)) = rx.try_recv()
+            {
+                self.playing = Some(Playing {
+                    which,
+                    start: std::time::Instant::now(),
+                    utt: u,
+                });
+                self.rx = None;
+            }
+            if let Some(p) = &self.playing {
+                if p.start.elapsed().as_secs_f32() > p.utt.total + 0.4 {
+                    self.playing = None;
+                } else {
+                    ctx.request_repaint_after(std::time::Duration::from_millis(30));
+                }
+            }
+        }
+
+        let now = Local::now();
+        let (h, mi) = (now.hour() as u8, now.minute() as u8);
+        for (key, cmd) in [
+            (egui::Key::Space, Command::SpeakTime),
+            (egui::Key::R, Command::ToggleRomaji),
+            (egui::Key::F, Command::ToggleFormat),
+            (egui::Key::S, Command::ToggleSettings),
+            (egui::Key::Escape, Command::Quit),
+        ] {
+            if ctx.input(|i| i.key_pressed(key)) {
+                if key == egui::Key::Escape && self.page == Page::Settings {
+                    self.page = Page::Clock;
+                } else {
+                    self.dispatch(cmd, ctx, h, mi);
+                }
+            }
+        }
+
+        match self.page {
+            Page::Clock => {
+                self.controls(ctx, h, mi);
+                self.clock_panel(ctx);
+            }
+            Page::Settings => self.settings_page(ctx),
+        }
+
         let a = ((1.0 - self.brightness) * 210.0) as u8;
         if a > 0 {
             let r = ctx.screen_rect();
@@ -323,17 +447,68 @@ impl eframe::App for ClockApp {
     }
 }
 
-/// UV sub-rect so an image covers `rect` (centre-crop) without distortion.
-fn cover_uv(tex: [usize; 2], rect: egui::Vec2) -> egui::Rect {
-    let img_a = tex[0] as f32 / tex[1].max(1) as f32;
-    let r_a = rect.x / rect.y.max(1.0);
-    let (mut ux, mut uy) = (0.0, 0.0);
-    if img_a > r_a {
-        ux = (1.0 - r_a / img_a) / 2.0;
-    } else {
-        uy = (1.0 - img_a / r_a) / 2.0;
+/// An icon-only button tinted to `tint`.
+fn icon_button(
+    ui: &mut egui::Ui,
+    src: egui::ImageSource<'_>,
+    tint: Color32,
+    sz: egui::Vec2,
+) -> egui::Response {
+    ui.add(egui::ImageButton::new(
+        egui::Image::new(src).tint(tint).fit_to_exact_size(sz),
+    ))
+}
+
+/// A frameless speaker icon (the per-line "say this" affordance).
+fn speaker_icon(ui: &mut egui::Ui, tint: Color32, sz: f32) -> egui::Response {
+    ui.add(
+        egui::ImageButton::new(
+            egui::Image::new(egui::include_image!("../assets/icons/speaker-simple-high.svg"))
+                .tint(tint)
+                .fit_to_exact_size(egui::vec2(sz, sz)),
+        )
+        .frame(false),
+    )
+    .on_hover_text("Hear this line in Japanese")
+}
+
+/// Left padding so a `width`-wide row ends up roughly centred in the column.
+fn center_pad(ui: &mut egui::Ui, width: f32) {
+    let pad = (ui.available_width() - width).max(0.0) / 2.0;
+    ui.add_space(pad);
+}
+
+/// Kana with a yellow underline under the mora currently being pronounced.
+#[cfg(feature = "audio")]
+fn karaoke_kana(
+    ui: &mut egui::Ui,
+    moras: &[audio::Mora],
+    elapsed: f32,
+    size: f32,
+    color: Color32,
+    accent: Color32,
+) {
+    let full: String = moras.iter().map(|m| m.kana.as_str()).collect();
+    let resp = ui.label(RichText::new(&full).size(size).color(color));
+    if let Some(i) = moras.iter().position(|m| elapsed >= m.start && elapsed < m.end) {
+        let before: String = moras[..i].iter().map(|m| m.kana.as_str()).collect();
+        let x0 = resp.rect.left() + measure(ui.ctx(), &before, size);
+        let x1 = x0 + measure(ui.ctx(), &moras[i].kana, size);
+        let y = resp.rect.bottom() + 2.0;
+        ui.painter().line_segment(
+            [egui::pos2(x0, y), egui::pos2(x1, y)],
+            egui::Stroke::new(3.0, accent),
+        );
     }
-    egui::Rect::from_min_max(egui::pos2(ux, uy), egui::pos2(1.0 - ux, 1.0 - uy))
+}
+
+/// Width of `text` at proportional `size` (to place the underline).
+fn measure(ctx: &egui::Context, text: &str, size: f32) -> f32 {
+    ctx.fonts(|f| {
+        f.layout_no_wrap(text.to_owned(), egui::FontId::proportional(size), Color32::WHITE)
+            .rect
+            .width()
+    })
 }
 
 fn label(ui: &mut egui::Ui, text: &str, size: f32, color: Color32) {
@@ -344,6 +519,18 @@ fn rule(ui: &mut egui::Ui, scale: f32, color: Color32) {
     let w = ui.available_width() * 0.55;
     let (rect, _) = ui.allocate_exact_size(egui::vec2(w, 3.0 * scale), egui::Sense::hover());
     ui.painter().rect_filled(rect, 0.0, color);
+}
+
+fn cover_uv(tex: [usize; 2], rect: egui::Vec2) -> egui::Rect {
+    let img_a = tex[0] as f32 / tex[1].max(1) as f32;
+    let r_a = rect.x / rect.y.max(1.0);
+    let (mut ux, mut uy) = (0.0, 0.0);
+    if img_a > r_a {
+        ux = (1.0 - r_a / img_a) / 2.0;
+    } else {
+        uy = (1.0 - img_a / r_a) / 2.0;
+    }
+    egui::Rect::from_min_max(egui::pos2(ux, uy), egui::pos2(1.0 - ux, 1.0 - uy))
 }
 
 fn month_en(m: u8) -> &'static str {
@@ -364,7 +551,6 @@ fn month_en(m: u8) -> &'static str {
     ][m as usize]
 }
 
-/// Apply the theme's colours as a flat (no-rounding) egui visual style.
 fn apply_theme(ctx: &egui::Context, t: &Theme) {
     let mut v = if t.is_light() {
         egui::Visuals::light()
@@ -387,7 +573,6 @@ fn apply_theme(ctx: &egui::Context, t: &Theme) {
     ctx.set_visuals(v);
 }
 
-/// Best-effort: install a system Japanese font so kanji/kana render.
 fn install_japanese_font(ctx: &egui::Context) {
     const CANDIDATES: &[&str] = &[
         "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",

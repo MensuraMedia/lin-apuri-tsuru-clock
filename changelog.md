@@ -17,3 +17,7 @@
 | 2026-10-27T17:55:00 | Settings panel (new settings.rs): theme presets + custom accent/text/bg colour pickers, brightness dimmer, ToggleSettings command (⚙ / S key) |
 | 2026-10-27T18:00:00 | Background images: folder scan, Fixed/Slideshow/Random modes, Gaussian blur + dim overlay (image crate); cover-fit + cached textures |
 | 2026-10-27T18:05:00 | Default background set to flat #141414; text-size presets (Compact/Standard/Large/Huge) on top of the responsive fit |
+| 2026-10-27T18:30:00 | Voice reworked to LIVE VOICEVOX (audio.rs: ureq→:50021, audio_query→synthesis); no chime, no clip bank; per-mora timing returned |
+| 2026-10-27T18:35:00 | Karaoke: yellow underline tracks the active mora on the time/date lines; a 🔊 speaker on each Japanese line (click to hear) |
+| 2026-10-27T18:40:00 | Toolbar is icon-only (no text labels); removed the VOICEVOX label from the bar; Compact text size is now the default |
+| 2026-10-27T18:45:00 | Settings moved from a floating window to an in-app page (← / S / Esc to leave) |

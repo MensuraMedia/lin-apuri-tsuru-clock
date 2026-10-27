@@ -7,8 +7,8 @@ the append-only `changelog.md`.
 ## 1. State (2026-10-27)
 
 - **Builds clean**: `cargo fmt --all --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace` all pass. CI runs the same (`.github/workflows/ci.yml`).
-- **Runs**: native GUI window verified (screenshot in `assets/screenshots/clock.png`); settings panel + background images + text-size verified; headless `--once` and `--no-default-features` verified.
-- **Time source**: the local OS clock/timezone via `chrono::Local::now()` — no network, no hardcoded time (`crates/app/src/app.rs`, `main.rs`).
+- **Runs**: native GUI verified (screenshot in `assets/screenshots/clock.png`); live VOICEVOX voice + karaoke underline, background images, in-app settings page, Compact default, and text-size all verified; headless `--once`/`--no-default-features` verified.
+- **Time source**: the local OS clock/timezone via `chrono::Local::now()`. **Voice** needs the local **VOICEVOX** engine on `:50021` (speaker No.7); without it the clock runs, the 🔊 just no-ops.
 
 ## 2. Layout (where things live)
 
@@ -18,7 +18,7 @@ the append-only `changelog.md`.
 | `crates/app/src/main.rs` | Entry point; CLI (`--once`, `--cmd`, `--list-commands`) and GUI dispatch. |
 | `crates/app/src/app.rs` | `ClockApp` (eframe): flat dark theme, 24h layout, responsive scale, window icon. |
 | `crates/app/src/command.rs` | `Command` registry — the single dispatch for GUI/keys/CLI. |
-| `crates/app/src/audio.rs` | `Player` — spawns an OS audio player for the current clip. |
+| `crates/app/src/audio.rs` | VOICEVOX `Speaker` — live synthesis (:50021) + per-mora timing; plays via the OS player. |
 | `crates/app/src/icons.rs` | Rasterises a bundled SVG to RGBA for the window/taskbar icon (resvg). |
 | `crates/app/src/settings.rs` | Theme presets, background-image system (folder, modes, blur), text-size. |
 | `crates/app/assets/icons/` | Bundled Phosphor icons (MIT) + `ATTRIBUTION.md`. |
@@ -45,8 +45,8 @@ bash packaging/install.sh                      # user-level menu/panel/Alt-Tab l
 ## 5. Known gaps / next steps (priority order)
 
 1. **Resident systray icon** — the panel presence today is the `.desktop` launcher; a true tray needs the `tray-icon` crate wired into eframe's event loop (not yet done).
-3. **Audio clip bank** — `assets/audio/` is git-ignored; regenerate from clock-mod's `voicepack timeclock` (VOICEVOX on :50021) and copy `time_HHMM.wav` in.
-4. **WASM build** (`trunk`) and on-the-hour announcement — see README roadmap.
+3. **WASM build** (`trunk`) and on-the-hour announcement — see README roadmap.
+4. **Pitch-accent overlay** — VOICEVOX already returns per-mora accent; the karaoke renderer is the natural place to show it.
 
 ## 6. Gotchas
 

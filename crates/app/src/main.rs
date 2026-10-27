@@ -4,7 +4,6 @@
 
 #[cfg(feature = "gui")]
 mod app;
-#[cfg(feature = "audio")]
 mod audio;
 mod command;
 #[cfg(feature = "gui")]
@@ -56,18 +55,20 @@ fn main() {
     print_once();
 }
 
-/// Speak the current time (headless), if the audio engine and a clip are present.
+/// Speak the current time (headless) via the local VOICEVOX engine.
 fn run_speak() {
     #[cfg(feature = "audio")]
     {
         use chrono::{Local, Timelike};
         let now = Local::now();
-        if let Some(p) = audio::Player::new("assets/audio")
-            && p.speak_time(now.hour() as u8, now.minute() as u8)
+        let text = jptime::time_reading(now.hour() as u8, now.minute() as u8).kanji;
+        if let Some(s) = audio::Speaker::detect()
+            && let Some(u) = s.speak(&text)
         {
+            std::thread::sleep(std::time::Duration::from_secs_f32(u.total + 0.3));
             return;
         }
-        eprintln!("no audio player or no clip for this time (see docs/AUDIO.md)");
+        eprintln!("VOICEVOX engine not reachable on :50021 (start it to hear audio)");
     }
     #[cfg(not(feature = "audio"))]
     eprintln!("built without the 'audio' feature");

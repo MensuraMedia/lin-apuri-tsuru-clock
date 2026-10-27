@@ -14,7 +14,7 @@ path = "src/main.rs"
 [features]
 default = ["gui", "audio"]
 gui = ["dep:eframe", "dep:egui_extras", "dep:resvg", "dep:image"]  # egui/eframe/wgpu window + SVG icons + bg images
-audio = []                 # spoken time/date playback (uses the OS audio player; no build deps)
+audio = ["dep:ureq", "dep:serde_json"]  # live VOICEVOX speaker + OS audio player
 
 [dependencies]
 jptime = { path = "../jptime" }
@@ -22,4 +22,6 @@ chrono = { version = "0.4", default-features = false, features = ["clock", "std"
 egui_extras = { version = "0.31", optional = true, default-features = false, features = ["svg"] }
 resvg = { version = "0.44", optional = true, default-features = false }
 image = { version = "0.25", optional = true, default-features = false, features = ["png", "jpeg", "webp"] }
+ureq = { version = "2", optional = true, default-features = false, features = ["json"] }
+serde_json = { version = "1", optional = true }
 eframe = { version = "0.31", optional = true, default-features = false, features = ["wgpu", "default_fonts", "x11", "wayland"] }

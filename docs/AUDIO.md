@@ -1,3 +1,5 @@
+> **Note:** the desktop app now synthesises live via VOICEVOX (`audio.rs`, no chime, no clip bank). This document describes the legacy `voicepack` clip-bank generator (still used by the clock-mod firmware project).
+
 # Audio
 
 The app **speaks** the time in Japanese. Playback and content are separated.

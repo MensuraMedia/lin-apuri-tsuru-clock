@@ -33,7 +33,7 @@ This repository is also intended as a **reference skeleton**: a modular, univers
 - **Japanese reading of the current time**, correct to the irregular forms a learner must know:
   `15:00 → 午後3時 → ごごさんじ → gogo san-ji`, `19:00 → 午後7時 → しちじ → shichi-ji`, `10:10 → じゅっぷん`.
 - **Japanese reading of the date** incl. the weekday: `2026年10月27日 火曜日 → nisennijuurokunen juugatsu nijuushichinichi kayoubi`, with the special day-of-month readings (ついたち…とおか, じゅうよっか, はつか).
-- **Speaks the time** in a natural Japanese voice (VOICEVOX) on demand or on the hour.
+- **Speaks any line** in a natural Japanese voice: click the 🔊 next to the time or date (or press `Space`) and the local **VOICEVOX** engine says it — with a **yellow karaoke underline that tracks the exact mora** being pronounced, so you see which sound belongs to which part of the hour, minute, month and day. Synthesised live (no pre-rendered bank, no chime).
 - **Headless/CLI mode** — the same clock as text, for scripting or a terminal.
 - **Customisable**: a settings panel (⚙, or `S`) with theme presets + custom accent/text/background colours, brightness, four **text-size** presets, and a **background-image** mode (a folder shown fixed / as a slideshow / randomised, with adjustable blur and dimming). Default background is flat `#141414`.
 - **Native on any desktop** (Linux, macOS, Windows) and, by design, compilable to **WebAssembly** for the browser.
@@ -49,9 +49,9 @@ This repository is also intended as a **reference skeleton**: a modular, univers
 | **Graphics / rendering** | **wgpu** (Vulkan / Metal / DirectX 12 / WebGPU). |
 | **Windowing** | `winit` via `eframe`. |
 | **Time** | `chrono` (local time, calendar, weekday) — the only runtime dependency of the core beyond the UI. |
-| **Audio playback** | The **OS audio player** (`paplay` / `pw-play` / `aplay` / `afplay`), spawned per clip — zero audio build dependencies. |
+| **Voice** | **Live VOICEVOX** synthesis over HTTP (`ureq` → `:50021`), played through the OS audio player. `audio_query` gives **per-mora timing** that drives the karaoke underline; works for any minute/date with no clip bank. |
 | **Icons** | **Phosphor** (MIT), bundled locally. Window/taskbar/Alt-Tab icon via `resvg`; toolbar via `egui_extras`' SVG loader, tinted to the theme. |
-| **Audio engine (content)** | **VOICEVOX** (Japanese-native TTS) driven by the `voicepack` pipeline, producing a validated clip bank. See [docs/AUDIO.md](docs/AUDIO.md). |
+| **Settings** | In-app settings **page** (not a dialog): theme presets + colour pickers, brightness, text-size presets, background-image folder (fixed / slideshow / random, blur, dim). |
 | **Reading engine** | `jptime` — a dependency-free crate computing Japanese time/date readings (kanji, kana, romaji) with the irregular forms. |
 | **Command architecture** | A **unified command registry**: every UI action, shortcut and CLI call dispatches by the same `Command` id — enabling headless/agent use. |
 | **Packaging / platforms** | Native binary today; AppImage / Flatpak / `.deb` / `.rpm` and a WASM web build are on the roadmap. |
@@ -95,9 +95,10 @@ Strict, simple **layering** — upper layers depend on lower, never the reverse:
 | Module | Responsibility |
 |---|---|
 | `main.rs` | entry point; GUI when `gui`, else the CLI clock; `--once` prints one reading and exits |
-| `app.rs` | `ClockApp` (`eframe::App`): flat dark theme, responsive 24-hour layout, Japanese lines, window icon |
+| `app.rs` | `ClockApp` (`eframe::App`): themeable layout, per-line 🔊 + karaoke underline, settings page, backgrounds, window icon |
 | `command.rs` | `Command` enum + `id()`/`from_id()` — the unified registry |
-| `audio.rs` | `Player`: spawns the OS audio player for the current clip; never panics without a device |
+| `settings.rs` | Theme presets, background-image system (modes, blur), text size |
+| `audio.rs` | VOICEVOX `Speaker`: live synthesis + per-mora timing (`Utterance`); plays via the OS player |
 
 ---
 
@@ -106,8 +107,8 @@ Strict, simple **layering** — upper layers depend on lower, never the reverse:
 ### Reading engine (`jptime`)
 Deterministic, dependency-free. The hard, valuable part is correctness: hours `4/7/9` (よじ/しちじ/くじ), the 分 sound changes (いっぷん/ろっぷん/じゅっぷん), months `4/7/9` (しがつ/しちがつ/くがつ), the special days (ついたち…とおか, じゅうよっか, はつか, にじゅうよっか), the day-counter `7/9` (しち/く) and year euphony (`4→よ`, `9→く`). A wrong reading teaches wrong Japanese, so every case is tested.
 
-### Audio engine (content)
-Spoken clips are produced by **VOICEVOX** (speaker No.7「アナウンス」) through the `voicepack` pipeline: chime → time(ja) → date(ja), validated (decoded peak/duration), at a measured speaking rate. The app plays the pre-rendered clip matching the current time; the generator and the licence/attribution are documented in [docs/AUDIO.md](docs/AUDIO.md). VOICEVOX attribution (`VOICEVOX:No.7（アナウンス）`) is shown in the app's About.
+### Voice engine (live VOICEVOX + karaoke)
+Clicking a line's 🔊 synthesises it **live** with **VOICEVOX** (speaker No.7「アナウンス」, no chime): the app POSTs `audio_query` (returning per-mora kana and vowel/consonant lengths), builds a timeline, POSTs `synthesis` for the WAV, and plays it via the OS player on a background thread. During playback a **yellow underline** tracks the active mora — a live "number & voice key" for every minute/date, computed on demand rather than from a 1,440-file bank. Requires the local VOICEVOX engine on `:50021`. Attribution `VOICEVOX:No.7（アナウンス）` is shown on the settings page.
 
 ---
 
@@ -156,16 +157,15 @@ its icon in the taskbar and Alt-Tab; the window itself also carries the icon at 
 | Brightness | Settings ▸ slider (uniform dimmer) | 1.0 |
 | Text size | Settings ▸ Compact / Standard / Large / Huge | Standard |
 | Background | Settings ▸ folder + None / Fixed / Slideshow / Random, blur, dim | None (flat) |
-| Audio clip directory | `assets/audio/` | bundled bank (regenerate with `voicepack timeclock`) |
 
-### Settings panel
+### Settings page
 
-Open with the **⚙ Settings** button or the `S` key. It controls the theme (four flat
-presets plus live accent/text/background colour pickers), a brightness dimmer, the text-size
-preset, and background images: point it at a folder, pick **Fixed** (one image, with prev/next),
-**Slideshow** (cycle on an interval) or **Random**, then tune **Blur** and the **Dim overlay**
-that keeps the clock legible over any image. Images decode via the `image` crate and are
-Gaussian-blurred on load; the current image is cached until the path or blur changes.
+Open with the **⚙** button or `S` — it opens as a full in-app **page** (back with the ← arrow,
+`S`, or `Esc`), not a floating dialog. It controls the theme (four flat presets plus live
+accent/text/background colour pickers), a brightness dimmer, the **text-size** preset
+(**Compact** by default), and background images: point it at a folder, pick **Fixed**
+(prev/next), **Slideshow** or **Random**, then tune **Blur** and the **Dim overlay**. Images
+decode via the `image` crate and are Gaussian-blurred on load (cached per path+blur).
 
 ---
 
@@ -232,7 +232,7 @@ Developed with **Claude Code**. The practices and assets a reviewer can verify i
 |---|---|
 | **Diagramming** | `docs/architecture.svg` follows the *diagram-design* skill: one accent colour, 1px hairlines, a 4px grid, WCAG-AA contrast, system fonts (offline), and `role="img"` + title/description for screen readers. |
 | **Iconography** | **Phosphor** icon set (local asset, MIT) bundled under `crates/app/assets/icons/` with `ATTRIBUTION.md`; rendered with `resvg` (window icon) and `egui_extras` (toolbar). |
-| **Voice** | **VOICEVOX** (speaker No.7「アナウンス」) via the `voicepack` pipeline — a local engine on `:50021`, attribution shown in-app. |
+| **Voice** | **VOICEVOX** (speaker No.7「アナウンス」), a local engine on `:50021`, synthesised live with per-mora timing for the karaoke underline; attribution shown on the settings page. |
 | **Quality gates** | `rustfmt` + `clippy -D warnings` + tests, enforced in CI (`.github/workflows/ci.yml`); toolchain pinned via `rust-toolchain.toml`. |
 | **Agent / MCP seam** | The unified `Command` registry (stable string ids, `--list-commands` / `--cmd`) is the headless control surface — the hook for a future JSON/**MCP** channel. No MCP server is required to build or run the app. |
 

@@ -1,56 +1,125 @@
-//! Spoken-time playback via the operating system's audio player (no build-time
-//! dependencies, uses tools already installed). The audio *content* is produced
-//! by the project's audio engine (VOICEVOX via voicepack) as WAV clips under
-//! `assets/audio/`; this module just plays the clip for a given time.
-//! Best-effort: no player or clip = silence, never a panic.
+//! Spoken Japanese via the local **VOICEVOX** engine (speaker No.7「アナウンス」).
+//! No chime — the text is synthesised live. `speak` returns per-mora timing so the
+//! UI can underline the exact sound being pronounced (a karaoke cursor), and plays
+//! the audio through the OS player. Any minute/date works without a pre-rendered bank.
 
-use std::path::{Path, PathBuf};
-use std::process::Command;
-
-pub struct Player {
-    dir: PathBuf,
-    cmd: &'static str,
+/// One mora (smallest Japanese sound unit) and when it sounds, in seconds from
+/// the start of playback. The timing types are always compiled; the engine that
+/// fills them is behind the `audio` feature.
+#[cfg(feature = "audio")]
+#[derive(Clone)]
+pub struct Mora {
+    pub kana: String,
+    pub start: f32,
+    pub end: f32,
 }
 
-impl Player {
-    /// Find an OS audio player and the clip directory. `None` if none is found.
-    pub fn new(dir: impl AsRef<Path>) -> Option<Player> {
-        detect_player().map(|cmd| Player {
-            dir: dir.as_ref().to_path_buf(),
-            cmd,
-        })
+/// A spoken line: the mora timeline and total length in seconds.
+#[cfg(feature = "audio")]
+#[derive(Clone)]
+pub struct Utterance {
+    pub moras: Vec<Mora>,
+    pub total: f32,
+}
+
+#[cfg(feature = "audio")]
+pub use engine::Speaker;
+
+#[cfg(feature = "audio")]
+mod engine {
+    use super::{Mora, Utterance};
+    use std::io::{Read, Write};
+    use std::path::Path;
+    use std::time::Duration;
+
+    const BASE: &str = "http://127.0.0.1:50021";
+    const SPEAKER: u32 = 7;
+
+    /// A handle to the local VOICEVOX engine.
+    pub struct Speaker;
+
+    impl Speaker {
+        /// `Some` if the VOICEVOX engine answers on :50021.
+        pub fn detect() -> Option<Speaker> {
+            ureq::get(&format!("{BASE}/version"))
+                .timeout(Duration::from_millis(500))
+                .call()
+                .ok()
+                .map(|_| Speaker)
+        }
+
+        /// Query timing, synthesise, and start playback. Returns the mora
+        /// timeline; the caller starts its clock when this returns (playback
+        /// has just begun).
+        pub fn speak(&self, text: &str) -> Option<Utterance> {
+            let query: serde_json::Value = ureq::post(&format!("{BASE}/audio_query"))
+                .query("speaker", &SPEAKER.to_string())
+                .query("text", text)
+                .timeout(Duration::from_secs(5))
+                .call()
+                .ok()?
+                .into_json()
+                .ok()?;
+
+            let speed = query["speedScale"].as_f64().unwrap_or(1.0).max(0.1) as f32;
+            let pre = query["prePhonemeLength"].as_f64().unwrap_or(0.1) as f32;
+            let mut moras = Vec::new();
+            let mut t = pre / speed;
+            for ap in query["accent_phrases"].as_array()? {
+                if let Some(list) = ap["moras"].as_array() {
+                    for m in list {
+                        let c = m["consonant_length"].as_f64().unwrap_or(0.0) as f32;
+                        let v = m["vowel_length"].as_f64().unwrap_or(0.0) as f32;
+                        let dur = ((c + v) / speed).max(0.0);
+                        let kana = kata_to_hira(m["text"].as_str().unwrap_or(""));
+                        moras.push(Mora {
+                            kana,
+                            start: t,
+                            end: t + dur,
+                        });
+                        t += dur;
+                    }
+                }
+                if let Some(p) = ap.get("pause_mora").and_then(|p| p.as_object()) {
+                    t += p.get("vowel_length").and_then(|x| x.as_f64()).unwrap_or(0.0) as f32 / speed;
+                }
+            }
+            t += query["postPhonemeLength"].as_f64().unwrap_or(0.1) as f32 / speed;
+
+            let wav = ureq::post(&format!("{BASE}/synthesis"))
+                .query("speaker", &SPEAKER.to_string())
+                .timeout(Duration::from_secs(20))
+                .send_json(query)
+                .ok()?;
+            let mut bytes = Vec::new();
+            wav.into_reader().read_to_end(&mut bytes).ok()?;
+            let path = std::env::temp_dir().join("lin-apuri-tsuru-clock-say.wav");
+            std::fs::File::create(&path).ok()?.write_all(&bytes).ok()?;
+            play(&path);
+
+            Some(Utterance { moras, total: t })
+        }
     }
 
-    /// Play `assets/audio/time_HHMM.wav` for the time rounded down to the nearest
-    /// available step. Returns false if no matching clip was found.
-    pub fn speak_time(&self, hour: u8, minute: u8) -> bool {
-        for step in [1u8, 5, 10, 15, 20, 30, 60] {
-            let m = (minute / step) * step;
-            let path = self.dir.join(format!("time_{hour:02}{m:02}.wav"));
-            if path.is_file() {
-                return Command::new(self.cmd).arg(&path).spawn().is_ok();
+    /// Spawn the OS audio player on `path` (detached; we don't wait).
+    fn play(path: &Path) {
+        for p in ["paplay", "pw-play", "aplay", "afplay"] {
+            if std::process::Command::new(p).arg(path).spawn().is_ok() {
+                return;
             }
         }
-        false
     }
-}
 
-fn detect_player() -> Option<&'static str> {
-    #[cfg(target_os = "macos")]
-    let candidates: &[&str] = &["afplay"];
-    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-    let candidates: &[&str] = &["paplay", "pw-play", "aplay"];
-    #[cfg(target_os = "windows")]
-    let candidates: &[&str] = &[]; // Windows playback: a roadmap item
-
-    candidates.iter().copied().find(|c| which(c))
-}
-
-fn which(cmd: &str) -> bool {
-    Command::new("sh")
-        .arg("-c")
-        .arg(format!("command -v {cmd}"))
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
+    /// VOICEVOX returns katakana; show hiragana to match the rest of the UI.
+    fn kata_to_hira(s: &str) -> String {
+        s.chars()
+            .map(|c| {
+                if ('\u{30A1}'..='\u{30F6}').contains(&c) {
+                    char::from_u32(c as u32 - 0x60).unwrap_or(c)
+                } else {
+                    c
+                }
+            })
+            .collect()
+    }
 }
