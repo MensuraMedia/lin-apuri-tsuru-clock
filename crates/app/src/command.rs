@@ -11,6 +11,8 @@ pub enum Command {
     ToggleRomaji,
     /// Toggle 24-hour / 12-hour digits (default 24-hour, as in Japan).
     ToggleFormat,
+    /// Open/close the settings panel (theme, colours, brightness, background).
+    ToggleSettings,
     /// Quit the application.
     Quit,
 }
@@ -22,6 +24,7 @@ impl Command {
             Command::SpeakTime => "speak_time",
             Command::ToggleRomaji => "toggle_romaji",
             Command::ToggleFormat => "toggle_format",
+            Command::ToggleSettings => "toggle_settings",
             Command::Quit => "quit",
         }
     }
@@ -32,6 +35,7 @@ impl Command {
             Command::SpeakTime,
             Command::ToggleRomaji,
             Command::ToggleFormat,
+            Command::ToggleSettings,
             Command::Quit,
         ]
         .into_iter()

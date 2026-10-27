@@ -35,6 +35,7 @@ This repository is also intended as a **reference skeleton**: a modular, univers
 - **Japanese reading of the date** incl. the weekday: `2026年10月27日 火曜日 → nisennijuurokunen juugatsu nijuushichinichi kayoubi`, with the special day-of-month readings (ついたち…とおか, じゅうよっか, はつか).
 - **Speaks the time** in a natural Japanese voice (VOICEVOX) on demand or on the hour.
 - **Headless/CLI mode** — the same clock as text, for scripting or a terminal.
+- **Customisable**: a settings panel (⚙, or `S`) with theme presets + custom accent/text/background colours, brightness, four **text-size** presets, and a **background-image** mode (a folder shown fixed / as a slideshow / randomised, with adjustable blur and dimming). Default background is flat `#141414`.
 - **Native on any desktop** (Linux, macOS, Windows) and, by design, compilable to **WebAssembly** for the browser.
 
 ---
@@ -149,10 +150,22 @@ its icon in the taskbar and Alt-Tab; the window itself also carries the icon at 
 
 | Setting | Where | Default |
 |---|---|---|
-| Time format | `Command::ToggleFormat` (key/CLI) | **24-hour** (Japanese convention) |
-| Romaji helper line | `Command::ToggleRomaji` | on |
+| Time format | `Command::ToggleFormat` (`F` / CLI) | **24-hour** (Japanese convention) |
+| Romaji helper line | `Command::ToggleRomaji` (`R`) | on |
+| Theme | Settings ▸ presets (Flat Dark · Midnight · Paper · High Contrast) + custom colours | Flat Dark (`#141414`) |
+| Brightness | Settings ▸ slider (uniform dimmer) | 1.0 |
+| Text size | Settings ▸ Compact / Standard / Large / Huge | Standard |
+| Background | Settings ▸ folder + None / Fixed / Slideshow / Random, blur, dim | None (flat) |
 | Audio clip directory | `assets/audio/` | bundled bank (regenerate with `voicepack timeclock`) |
-| Theme | flat dark | fixed (light theme is roadmap) |
+
+### Settings panel
+
+Open with the **⚙ Settings** button or the `S` key. It controls the theme (four flat
+presets plus live accent/text/background colour pickers), a brightness dimmer, the text-size
+preset, and background images: point it at a folder, pick **Fixed** (one image, with prev/next),
+**Slideshow** (cycle on an interval) or **Random**, then tune **Blur** and the **Dim overlay**
+that keeps the clock legible over any image. Images decode via the `image` crate and are
+Gaussian-blurred on load; the current image is cached until the path or blur changes.
 
 ---
 
@@ -203,8 +216,8 @@ lin-apuri-tsūru-clock/
 ## 10. Roadmap
 
 - Web build (`trunk` + WASM) from the same code.
+- A resident **systray** icon (today the panel presence is the `.desktop` launcher).
 - Packaging: AppImage / Flatpak / `.deb` / `.rpm`.
-- Light theme and configurable accent; font size auto-fit.
 - On-the-hour spoken announcement and quiet hours.
 - Pitch-accent display (VOICEVOX exposes per-mora accent) as a learning overlay.
 - `cargo xtask layers` to enforce the layering in CI.

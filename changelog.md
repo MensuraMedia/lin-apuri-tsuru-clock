@@ -14,3 +14,6 @@
 | 2026-10-27T17:35:00 | Diagram: docs/architecture.svg authored per the diagram-design skill (one accent, hairlines, 4px grid, a11y), verified render |
 | 2026-10-27T17:40:00 | Packaging: .desktop launcher (+StartupWMClass), branded app icon, user-level install/uninstall scripts, AppImage/.deb builder |
 | 2026-10-27T17:45:00 | Real screenshot captured (assets/screenshots/clock.png); HANDOFF.md added; README refreshed (diagram, screenshot, launchers, tooling) |
+| 2026-10-27T17:55:00 | Settings panel (new settings.rs): theme presets + custom accent/text/bg colour pickers, brightness dimmer, ToggleSettings command (⚙ / S key) |
+| 2026-10-27T18:00:00 | Background images: folder scan, Fixed/Slideshow/Random modes, Gaussian blur + dim overlay (image crate); cover-fit + cached textures |
+| 2026-10-27T18:05:00 | Default background set to flat #141414; text-size presets (Compact/Standard/Large/Huge) on top of the responsive fit |

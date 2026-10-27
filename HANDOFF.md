@@ -7,7 +7,7 @@ the append-only `changelog.md`.
 ## 1. State (2026-10-27)
 
 - **Builds clean**: `cargo fmt --all --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace` all pass. CI runs the same (`.github/workflows/ci.yml`).
-- **Runs**: native GUI window verified (screenshot in `assets/screenshots/clock.png`); headless `--once` and `--no-default-features` verified.
+- **Runs**: native GUI window verified (screenshot in `assets/screenshots/clock.png`); settings panel + background images + text-size verified; headless `--once` and `--no-default-features` verified.
 - **Time source**: the local OS clock/timezone via `chrono::Local::now()` — no network, no hardcoded time (`crates/app/src/app.rs`, `main.rs`).
 
 ## 2. Layout (where things live)
@@ -20,6 +20,7 @@ the append-only `changelog.md`.
 | `crates/app/src/command.rs` | `Command` registry — the single dispatch for GUI/keys/CLI. |
 | `crates/app/src/audio.rs` | `Player` — spawns an OS audio player for the current clip. |
 | `crates/app/src/icons.rs` | Rasterises a bundled SVG to RGBA for the window/taskbar icon (resvg). |
+| `crates/app/src/settings.rs` | Theme presets, background-image system (folder, modes, blur), text-size. |
 | `crates/app/assets/icons/` | Bundled Phosphor icons (MIT) + `ATTRIBUTION.md`. |
 | `assets/audio/` | Hourly VOICEVOX clips (git-ignored; regenerate — see §5). |
 | `docs/architecture.svg` | Architecture diagram (diagram-design skill). |
@@ -43,8 +44,7 @@ bash packaging/install.sh                      # user-level menu/panel/Alt-Tab l
 
 ## 5. Known gaps / next steps (priority order)
 
-1. **Settings panel** (in progress / requested): theme presets, accent colour, brightness, and a background-image mode (folder; fixed / random / slideshow; blur). Icons for it are already bundled (`gear-six`, `sun`, `moon-stars`, `palette`, `sliders-horizontal`, `image`, `images`, `shuffle`, `arrows-clockwise`, `drop-half`, `lock-simple*`).
-2. **Resident systray icon** — the panel presence today is the `.desktop` launcher; a true tray needs the `tray-icon` crate wired into eframe's event loop (not yet done).
+1. **Resident systray icon** — the panel presence today is the `.desktop` launcher; a true tray needs the `tray-icon` crate wired into eframe's event loop (not yet done).
 3. **Audio clip bank** — `assets/audio/` is git-ignored; regenerate from clock-mod's `voicepack timeclock` (VOICEVOX on :50021) and copy `time_HHMM.wav` in.
 4. **WASM build** (`trunk`) and on-the-hour announcement — see README roadmap.
 

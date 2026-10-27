@@ -9,6 +9,8 @@ mod audio;
 mod command;
 #[cfg(feature = "gui")]
 mod icons;
+#[cfg(feature = "gui")]
+mod settings;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -17,6 +19,7 @@ fn main() {
             command::Command::SpeakTime,
             command::Command::ToggleRomaji,
             command::Command::ToggleFormat,
+            command::Command::ToggleSettings,
             command::Command::Quit,
         ] {
             println!("{}", c.id());
