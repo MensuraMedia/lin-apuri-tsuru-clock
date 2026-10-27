@@ -1,0 +1,11 @@
+[package]
+name = "jptime"
+description = "Japanese readings of the time and date (kanji, kana, romaji) with correct irregular forms."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lints.rust]
+unsafe_code = "forbid"

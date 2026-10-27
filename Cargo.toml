@@ -1,0 +1,15 @@
+# lin-apuri-tsūru-clock — "Lin App Tool" clock: a native, cross-platform Japanese
+# learning clock. egui/eframe on wgpu. Pure Rust. Dual MIT OR Apache-2.0.
+[workspace]
+resolver = "3"
+members = ["crates/jptime", "crates/app"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.92"
+license = "MIT OR Apache-2.0"
+authors = ["Mensura Media"]
+
+[profile.release]
+opt-level = 2

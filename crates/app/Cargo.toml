@@ -1,0 +1,22 @@
+[package]
+name = "linclock"
+description = "lin-apuri-tsūru-clock: a native Japanese learning clock (egui/eframe). 24-hour display with Japanese readings and spoken time."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "linclock"
+path = "src/main.rs"
+
+[features]
+default = ["gui", "audio"]
+gui = ["dep:eframe"]       # the egui/eframe/wgpu desktop window
+audio = []                 # spoken time/date playback (uses the OS audio player; no build deps)
+
+[dependencies]
+jptime = { path = "../jptime" }
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+eframe = { version = "0.31", optional = true, default-features = false, features = ["wgpu", "default_fonts", "x11", "wayland"] }
